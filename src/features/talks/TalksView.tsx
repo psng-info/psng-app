@@ -1,17 +1,33 @@
-import { RefreshCw } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useTeam } from '@/features/access/CurrentUser';
-import { useTalksData } from '@/data/repos/talks';
+import { Check, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCurrentUser, useTeam } from '@/features/access/CurrentUser';
+import { memberMatcher } from '@/features/access/team';
+import {
+  useLogStep,
+  usePendingTalkWrites,
+  useTalksData,
+  useUpdateLecture,
+} from '@/data/repos/talks';
 import { SheetsError } from '@/data/sheets/SheetsAdapter';
 import { navigate } from '@/app/router';
-import { startOfDay } from '@/domain/dates';
-import { TALK_TILES, actionItems, buildTalksModel, speakerPool, stats } from '@/domain/talks/model';
-import { EmptyState, ErrorBanner, Section, Skeleton } from '@/ui/blocks';
+import { parseDate, startOfDay } from '@/domain/dates';
+import {
+  TALK_TILES,
+  actionItems,
+  buildTalksModel,
+  speakerPool,
+  stats,
+  talkKey,
+} from '@/domain/talks/model';
+import { cell } from '@/domain/talks/steps';
+import type { Flag, StepState, Talk } from '@/domain/talks/types';
+import { EmptyState, ErrorBanner, PageHeader, Section, Skeleton } from '@/ui/blocks';
 import { Button } from '@/ui/shadcn/button';
-import { cn } from '@/ui/lib/utils';
+import { TalkActionsContext, type TalkActions } from './actions';
 import { ActionList } from './ActionList';
+import { FactsSheet } from './FactsSheet';
+import { StepSheet, type StepEdit } from './StepSheet';
 import { NO_FILTERS, hasActiveFilter, type TalkFilters } from './filters';
-import { memberMatcher } from './format';
 import { NextTalkHero, NumberTiles, TileGrid } from './Lage';
 import { Numbers } from './Numbers';
 import { SpeakerPool } from './SpeakerPool';
@@ -41,6 +57,13 @@ function Loading() {
       </div>
     </div>
   );
+}
+
+/** Fehlertext ohne Zellinhalte. SheetsError-Texte sind für Menschen gedacht. */
+function writeError(err: unknown): string {
+  return `Speichern fehlgeschlagen. ${
+    err instanceof SheetsError ? err.message : 'Bitte neu laden und nochmal versuchen.'
+  }`;
 }
 
 const prefersReducedMotion = (): boolean =>
@@ -75,6 +98,28 @@ export function TalksView({
   const [scrollReq, setScrollReq] = useState<{ key: string; n: number } | null>(null);
   const [seenParam, setSeenParam] = useState<string | undefined>(undefined);
 
+  // Schreiben: Sheets für Schritt und Eckdaten, Meldungen, laufende Speicherungen
+  const user = useCurrentUser();
+  const [stepTarget, setStepTarget] = useState<{ talk: string; step: string } | null>(null);
+  const [factsTarget, setFactsTarget] = useState<string | null>(null);
+  const [problem, setProblem] = useState('');
+  const [notice, setNotice] = useState('');
+  const log = useLogStep({
+    onError: (e) => setProblem(writeError(e)),
+    onSuccess: (_r, v) => setNotice(`Gespeichert: ${v.step}.`),
+  });
+  const lecture = useUpdateLecture({
+    onError: (e) => setProblem(writeError(e)),
+    onSuccess: () => setNotice('Eckdaten gespeichert.'),
+  });
+  const pending = usePendingTalkWrites();
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = window.setTimeout(() => setNotice(''), 6000);
+    return () => window.clearTimeout(t);
+  }, [notice]);
+
   const open = (key: string): void => {
     setFilters(NO_FILTERS);
     setTouched(true);
@@ -100,6 +145,58 @@ export function TalksView({
     navigate('talks', key);
   };
 
+  const { mutate: logMutate } = log;
+  const { mutate: lectureMutate } = lecture;
+  const talkActions = useMemo<TalkActions>(
+    () => ({
+      editStep: (talk: Talk, step: StepState) =>
+        setStepTarget({ talk: talk.key, step: step.def.key }),
+      markDone: (talk: Talk, step: StepState) => {
+        setProblem('');
+        logMutate({
+          talk: talk.key,
+          step: step.def.key,
+          status: 'erledigt',
+          owner: '',
+          note: '',
+          by: user.name,
+        });
+      },
+      editFacts: (talk: Talk) => setFactsTarget(talk.key),
+      applyFix: (talk: Talk, fix: NonNullable<Flag['fix']>) => {
+        setProblem('');
+        lectureMutate({ key: talk.key, set: fix.set });
+      },
+      pendingSteps: pending.steps,
+      pendingTalks: pending.lectures,
+    }),
+    [logMutate, lectureMutate, user.name, pending.steps, pending.lectures],
+  );
+  const stepSheet = useMemo(() => {
+    const talk = model?.talks.find((t) => t.key === stepTarget?.talk);
+    const step = talk?.steps.find((s) => s.def.key === stepTarget?.step);
+    return talk && step ? { talk, step } : null;
+  }, [model, stepTarget]);
+  const factsTalk = useMemo(
+    () => model?.talks.find((t) => t.key === factsTarget) ?? null,
+    [model, factsTarget],
+  );
+  const saveStep = useCallback(
+    (talk: Talk, step: StepState, edit: StepEdit): void => {
+      setProblem('');
+      logMutate({ talk: talk.key, step: step.def.key, by: user.name, ...edit });
+      setStepTarget(null);
+    },
+    [logMutate, user.name],
+  );
+  const saveFacts = (talk: Talk, set: Record<string, string>): void => {
+    setProblem('');
+    lectureMutate({ key: talk.key, set });
+    setFactsTarget(null);
+    // Neues Datum = neuer Schlüssel: die Karte unter dem neuen Schlüssel offen halten
+    if ('Datum' in set) openFromUi(talkKey(parseDate(set.Datum), cell(talk.raw, 'Speaker')));
+  };
+
   const scrolled = useRef(0);
   useEffect(() => {
     if (!scrollReq || !model || scrolled.current === scrollReq.n) return;
@@ -116,12 +213,6 @@ export function TalksView({
   const toggleTile = (k: string): void =>
     setFilters((f) => ({ ...f, tile: f.tile === k ? '' : k }));
 
-  const stand = query.dataUpdatedAt
-    ? new Date(query.dataUpdatedAt).toLocaleTimeString('de-DE', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '';
   const errorText =
     query.error instanceof SheetsError
       ? query.error.message
@@ -129,106 +220,124 @@ export function TalksView({
   const activeTile = TALK_TILES.find((t) => t.k === filters.tile);
 
   return (
-    <section aria-labelledby="talks-title" className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h2 id="talks-title" className="font-display text-2xl font-semibold">
-          Talks
-        </h2>
-        <div className="flex items-center gap-3">
-          {stand && (
-            <span className="text-muted font-mono text-xs" title="Letzter Abruf aus dem Sheet">
-              Stand {stand}
-            </span>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void query.refetch()}
-            disabled={query.isFetching}
-            aria-busy={query.isFetching}
-          >
-            <RefreshCw aria-hidden="true" className={cn(query.isFetching && 'animate-spin')} />
-            Neu laden
-          </Button>
-        </div>
-      </div>
+    <TalkActionsContext.Provider value={talkActions}>
+      <section aria-labelledby="talks-title" className="flex flex-col gap-8">
+        <PageHeader
+          id="talks-title"
+          title="Talks"
+          updatedAt={query.dataUpdatedAt}
+          fetching={query.isFetching}
+          onReload={() => void query.refetch()}
+        />
 
-      {query.isError && (
-        <ErrorBanner
-          action={
-            <Button type="button" variant="outline" onClick={() => void query.refetch()}>
-              Erneut versuchen
-            </Button>
-          }
+        <p
+          role="status"
+          className={notice ? 'text-ok flex items-center gap-2 text-sm font-medium' : 'sr-only'}
         >
-          {errorText}
-        </ErrorBanner>
-      )}
-
-      {query.isPending && <Loading />}
-
-      {model && numbers && pool && (
-        <>
-          <Section title="Lage">
-            <div className="grid gap-3 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <NextTalkHero talk={model.next} today={today} onOpen={openFromUi} />
-              </div>
-              <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
-                <NumberTiles stats={numbers} />
-              </div>
-            </div>
-            <div className="mt-3">
-              <TileGrid talks={model.talks} active={filters.tile} onToggle={toggleTile} />
-            </div>
-            {activeTile && (
-              <p className="text-muted mt-2 text-sm" aria-live="polite">
-                Filter aktiv: {activeTile.label}.{' '}
-                <button
-                  type="button"
-                  className="text-accent min-h-11 underline underline-offset-2"
-                  onClick={() =>
-                    document.getElementById('talks-liste')?.scrollIntoView({
-                      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-                      block: 'start',
-                    })
-                  }
-                >
-                  Zur Liste
-                </button>
-              </p>
-            )}
-          </Section>
-
-          <Section
-            title="Handlungsbedarf"
-            count={actions.length ? `(${actions.length})` : undefined}
+          {notice && <Check aria-hidden="true" className="size-4" />}
+          {notice}
+        </p>
+        {problem && (
+          <ErrorBanner
+            action={
+              <button
+                type="button"
+                onClick={() => setProblem('')}
+                aria-label="Meldung schließen"
+                className="-m-2 inline-flex size-11 items-center justify-center"
+              >
+                <X className="size-4" aria-hidden="true" />
+              </button>
+            }
           >
-            <ActionList items={actions} onOpen={openFromUi} />
-          </Section>
+            {problem}
+          </ErrorBanner>
+        )}
 
-          {model.talks.length === 0 ? (
-            <Section title="Talks">
-              <EmptyState>Im Tab Lectures steht noch kein Talk.</EmptyState>
+        {query.isError && (
+          <ErrorBanner
+            action={
+              <Button type="button" variant="outline" onClick={() => void query.refetch()}>
+                Erneut versuchen
+              </Button>
+            }
+          >
+            {errorText}
+          </ErrorBanner>
+        )}
+
+        {query.isPending && <Loading />}
+
+        {model && numbers && pool && (
+          <>
+            <Section title="Lage">
+              <div className="grid gap-3 lg:grid-cols-3">
+                <div className="lg:col-span-2">
+                  <NextTalkHero talk={model.next} today={today} onOpen={openFromUi} />
+                </div>
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+                  <NumberTiles stats={numbers} />
+                </div>
+              </div>
+              <div className="mt-3">
+                <TileGrid talks={model.talks} active={filters.tile} onToggle={toggleTile} />
+              </div>
+              {activeTile && (
+                <p className="text-muted mt-2 text-sm" aria-live="polite">
+                  Filter aktiv: {activeTile.label}.{' '}
+                  <button
+                    type="button"
+                    className="text-accent min-h-11 underline underline-offset-2"
+                    onClick={() =>
+                      document.getElementById('talks-liste')?.scrollIntoView({
+                        behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+                        block: 'start',
+                      })
+                    }
+                  >
+                    Zur Liste
+                  </button>
+                </p>
+              )}
             </Section>
-          ) : (
-            <TalkList
-              talks={model.talks}
-              filters={filters}
-              onFilters={setFilters}
-              isOpen={isOpen}
-              onToggle={toggle}
-              ctx={ctx}
-            />
-          )}
 
-          <Section title="Zahlen" hint={hasActiveFilter(filters) ? undefined : 'Gehaltene Talks'}>
-            <Numbers stats={numbers} today={today} onOpen={openFromUi} />
-          </Section>
+            <Section
+              title="Handlungsbedarf"
+              count={actions.length ? `(${actions.length})` : undefined}
+            >
+              <ActionList items={actions} onOpen={openFromUi} />
+            </Section>
 
-          <SpeakerPool pool={pool} today={today} onOpen={openFromUi} />
-        </>
-      )}
-    </section>
+            {model.talks.length === 0 ? (
+              <Section title="Talks">
+                <EmptyState>Im Tab Lectures steht noch kein Talk.</EmptyState>
+              </Section>
+            ) : (
+              <TalkList
+                talks={model.talks}
+                filters={filters}
+                onFilters={setFilters}
+                isOpen={isOpen}
+                onToggle={toggle}
+                ctx={ctx}
+              />
+            )}
+
+            <Section title="Zahlen" hint={hasActiveFilter(filters) ? undefined : 'Gehaltene Talks'}>
+              <Numbers stats={numbers} today={today} onOpen={openFromUi} />
+            </Section>
+
+            <SpeakerPool pool={pool} today={today} onOpen={openFromUi} />
+          </>
+        )}
+        <StepSheet
+          target={stepSheet}
+          team={team.map((m) => m.name)}
+          onClose={() => setStepTarget(null)}
+          onSave={saveStep}
+        />
+        <FactsSheet talk={factsTalk} onClose={() => setFactsTarget(null)} onSave={saveFacts} />
+      </section>
+    </TalkActionsContext.Provider>
   );
 }

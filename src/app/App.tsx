@@ -1,4 +1,8 @@
 import { Monitor, Moon, Sun } from 'lucide-react';
+import { useMemo } from 'react';
+import { useHrData } from '@/data/repos/hr';
+import { buildPeople, hrConflict } from '@/domain/hr';
+import type { ConflictFn } from '@/domain/todos';
 import { AccessGate } from '@/features/access/AccessGate';
 import { useHasRole } from '@/features/access/CurrentUser';
 import { UserMenu } from '@/features/access/UserMenu';
@@ -70,11 +74,35 @@ function Shell() {
 
       <main className="mx-auto max-w-[1180px] px-4 py-6">
         {route.view === 'talks' && <TalksView param={route.param} />}
-        {route.view === 'todos' && <TodosView />}
+        {route.view === 'todos' &&
+          (isHr ? <TodosWithHr param={route.param} /> : <TodosView param={route.param} />)}
         {route.view === 'kandidaten' && (isHr ? <HrView /> : <NoHrAccess />)}
       </main>
     </div>
   );
+}
+
+/**
+ * To-dos mit HR-Widerspruch. Nur für die Rolle hr gemountet: nur sie darf das HR-Sheet lesen,
+ * für alle anderen werden nie HR-Daten geladen. Solange sie fehlen, läuft die Ansicht ohne Prüfung.
+ */
+function TodosWithHr({ param }: { param: string | undefined }) {
+  const hr = useHrData();
+  const conflict = useMemo<ConflictFn | undefined>(() => {
+    if (!hr.data) return undefined;
+    const people = buildPeople(hr.data, new Date());
+    return (todo) => {
+      const hit = hrConflict([todo.title, todo.nextStep].join(' '), people);
+      if (!hit) return null;
+      return {
+        label: `HR: ${hit.first} ${hit.status.toLowerCase()}`,
+        reason: hit.grund
+          ? `${hit.first} steht im HR-Sheet als „${hit.status}“ (${hit.grund}).`
+          : `${hit.first} steht im HR-Sheet als „${hit.status}“.`,
+      };
+    };
+  }, [hr.data]);
+  return <TodosView {...(conflict ? { conflict } : {})} param={param} />;
 }
 
 function NoHrAccess() {

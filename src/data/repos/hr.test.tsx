@@ -97,6 +97,14 @@ describe('writeCandidate', () => {
   it('doppelter Name: Fehler statt raten', () => {
     expect(() => findCandidateRow([...KAND, ['Ben', 'Bunt']], 'Ben Bunt')).toThrow(/mehrfach/);
   });
+  it('sichert Formel-Anfänge in Texten', async () => {
+    const f = new Fake([
+      [...HEAD, 'Kommentar'],
+      ['Anna', 'Alt', '', '', '', '', '', ''],
+    ]);
+    await writeCandidate(f, 'Anna Alt', { Kommentar: '-ruft zurück' });
+    expect(f.writes).toEqual([['Kandidaten!H2', "'-ruft zurück"]]);
+  });
   it('schreibt Datum als TT.MM.JJJJ', async () => {
     const f = new Fake();
     await writeCandidate(f, 'Anna Alt', { '1:1 am': '3.12.2026' });

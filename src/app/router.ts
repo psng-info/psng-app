@@ -6,10 +6,17 @@ export interface Route {
   param?: string;
 }
 
-/** Wandelt einen Hash wie `#/talks/abc` in eine Route um. Unbekanntes führt zu `talks`. */
+/** Wandelt einen Hash wie `#/talks/abc` oder `#/todos/T07` in eine Route um. Unbekanntes führt zu `talks`. */
 export function parseHash(hash: string): Route {
   const [, first, second] = hash.replace(/^#/, '').split('/');
-  if (first === 'todos') return { view: 'todos' };
+  if (first === 'todos') {
+    if (!second) return { view: 'todos' };
+    try {
+      return { view: 'todos', param: decodeURIComponent(second) };
+    } catch {
+      return { view: 'todos' };
+    }
+  }
   if (first === 'kandidaten') return { view: 'kandidaten' };
   if (first === 'talks' && second) {
     try {

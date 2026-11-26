@@ -19,7 +19,7 @@ const auth: AuthState = {
   getToken: () => Promise.resolve('t'),
 };
 
-function setup() {
+function setup(param?: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const user = { email: 'demo@example.org', name: 'Demo', roles: new Set(['kern' as const]) };
   render(
@@ -27,7 +27,7 @@ function setup() {
       <AuthContext.Provider value={auth}>
         <AdapterProvider>
           <CurrentUserContext.Provider value={{ user, team: [{ ...user }] }}>
-            <TodosView />
+            <TodosView {...(param ? { param } : {})} />
           </CurrentUserContext.Provider>
         </AdapterProvider>
       </AuthContext.Provider>
@@ -67,9 +67,7 @@ describe('TodosView', () => {
     const user = setup();
     const tile = await screen.findByRole('button', { name: /Überfällig/ });
     expect(tile).toHaveTextContent('2');
-    expect(
-      screen.getByRole('progressbar', { name: 'Onboarding: 5 von 12 erledigt' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Onboarding: 5 von 12 erledigt' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Liste/ })).toHaveTextContent('24');
 
     await user.click(tile);
@@ -81,6 +79,17 @@ describe('TodosView', () => {
 
     await user.click(tile);
     expect(screen.getByRole('heading', { name: /Liste/ })).toHaveTextContent('24');
+  });
+
+  it('#/todos/<id>: sucht die ID, zeigt Erledigte und hebt das To-do hervor', async () => {
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    setup('T116');
+    const card = await screen.findByRole('article', { name: /T116/ });
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(screen.getByRole('searchbox', { name: 'Suche' })).toHaveValue('T116');
+    expect(screen.getByLabelText('Erledigte anzeigen')).toBeChecked();
+    await waitFor(() => expect(card).toHaveFocus());
+    expect(card.className).toContain('ring-2');
   });
 
   it('Suche und Erledigte anzeigen', async () => {

@@ -15,6 +15,11 @@ describe('parseHash', () => {
     expect(parseHash('#/todos')).toEqual({ view: 'todos' });
     expect(parseHash('#/kandidaten')).toEqual({ view: 'kandidaten' });
   });
+  it('liest die To-do-ID aus #/todos/<id>', () => {
+    expect(parseHash('#/todos/T07')).toEqual({ view: 'todos', param: 'T07' });
+    expect(parseHash('#/todos/')).toEqual({ view: 'todos' });
+    expect(parseHash('#/todos/%E0%A4%A')).toEqual({ view: 'todos' });
+  });
   it('dekodiert den Talk-Schlüssel', () => {
     expect(parseHash('#/talks/12.03.2027%20%C2%B7%20Anna')).toEqual({
       view: 'talks',

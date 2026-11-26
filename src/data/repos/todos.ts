@@ -15,6 +15,7 @@ import {
 import { useSheets } from '../AdapterContext';
 import { RANGES, REFETCH, SHEET_IDS, STALE_MS, TABS } from '../config';
 import { SheetsError, type SheetsAdapter } from '../sheets/SheetsAdapter';
+import { safeCell, safeRow } from '../sheets/cellValue';
 import { a1, quoteTab, requireColumns } from '../sheets/table';
 
 export const TODOS_KEY = ['todos'] as const;
@@ -41,7 +42,7 @@ async function writeCells(
   for (const [name, value] of Object.entries(patch)) {
     const col = header.indexOf(name);
     if (col < 0) continue;
-    await sheets.updateCell(SHEET_IDS.todos, a1(TABS.todos, col, sheetRow), value);
+    await sheets.updateCell(SHEET_IDS.todos, a1(TABS.todos, col, sheetRow), safeCell(value));
   }
 }
 
@@ -92,7 +93,7 @@ export async function createTodo(
   await sheets.append(
     SHEET_IDS.todos,
     `${quoteTab(TABS.todos)}!A1`,
-    newTodoRow(header, { ...fields, ID: id }, today),
+    safeRow(newTodoRow(header, { ...fields, ID: id }, today)),
   );
   return id;
 }

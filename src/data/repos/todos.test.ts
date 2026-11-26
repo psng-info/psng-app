@@ -126,6 +126,14 @@ describe('createTodo', () => {
     expect(row[TODO_HEADER.indexOf('Erfasst')]).toBe('26.11.2026');
   });
 
+  it('sichert Formel-Anfänge in der neuen Zeile', async () => {
+    const f = fake(todoValues([]));
+    await createTodo(f.adapter, { 'To-do': '=1+1', 'Wartet auf': '@Anna' }, TODAY);
+    const row = f.calls.find((c) => c.kind === 'append')?.args[2] as string[];
+    expect(row[TODO_HEADER.indexOf('To-do')]).toBe("'=1+1");
+    expect(row[TODO_HEADER.indexOf('Wartet auf')]).toBe("'@Anna");
+  });
+
   it('ungültige Eingabe: Fehler vor jedem Zugriff', async () => {
     const f = fake(todoValues([]));
     await expect(createTodo(f.adapter, { 'To-do': '' }, TODAY)).rejects.toBeInstanceOf(SheetsError);

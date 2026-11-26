@@ -17,7 +17,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/ui/shadcn/sheet';
-import { SelectField, TextField } from './fields';
+import { SelectField, TextField } from '@/ui/blocks/fields';
 
 const NEW_STATUSES = ['offen', 'läuft', 'wartet', 'geparkt'] as const;
 

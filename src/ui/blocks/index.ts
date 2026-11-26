@@ -2,6 +2,8 @@ import './blocks.css';
 
 export { Avatar, OwnerChip } from './Avatar';
 export { initialsOf } from './initials';
+export * from './fields';
+export { PageHeader } from './PageHeader';
 export { EmptyState } from './EmptyState';
 export { ErrorBanner } from './ErrorBanner';
 export { FilterBar, type FilterChip, type FilterOption, type FilterSelect } from './FilterBar';

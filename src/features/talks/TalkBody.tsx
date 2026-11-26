@@ -1,12 +1,18 @@
-import { ExternalLink, Lock, Play } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { ExternalLink, ListTodo, LoaderCircle, Lock, Pencil, Play } from 'lucide-react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { SHEET_IDS } from '@/data/config';
+import { stepId } from '@/data/repos/talks';
+import { useTodosData } from '@/data/repos/todos';
 import { formatShort, relDays } from '@/domain/dates';
 import { col, type Row } from '@/domain/rows';
 import { cell, coord, hasYT, isHeld, isOff, onsite, tnOf } from '@/domain/talks/steps';
 import { PHASES, type StepState, type Talk, type TalkSpeaker } from '@/domain/talks/types';
+import { parseTodos, relatedTodos } from '@/domain/todos';
 import { LevelPill, OwnerChip, Pill, SegmentLegend, SubHeading } from '@/ui/blocks';
+import { Button } from '@/ui/shadcn/button';
+import { Checkbox } from '@/ui/shadcn/checkbox';
 import { cn } from '@/ui/lib/utils';
+import { useTalkActions } from './actions';
 import {
   dueText,
   firstSpeakerForm,
@@ -88,13 +94,26 @@ const Prose = ({ children }: { children: string }) => (
 // --- Hinweise -----------------------------------------------------------
 
 function FlagList({ talk }: { talk: Talk }) {
+  const actions = useTalkActions();
   if (!talk.flags.length) return null;
+  const busy = actions?.pendingTalks.has(talk.key) ?? false;
   return (
     <ul className="flex flex-col gap-2" aria-label="Hinweise">
       {talk.flags.map((f, i) => (
-        <li key={i} className="flex flex-wrap items-start gap-x-2 gap-y-1 text-sm">
+        <li key={i} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <LevelPill level={f.level}>{f.tag}</LevelPill>
           <span className="min-w-0 flex-1 basis-56">{f.why}</span>
+          {f.fix && actions && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => f.fix && actions.applyFix(talk, f.fix)}
+            >
+              {f.fix.label}
+            </Button>
+          )}
         </li>
       ))}
     </ul>
@@ -123,18 +142,36 @@ function stepNote(s: StepState): string {
   return '';
 }
 
-function StepRow({ step, ctx }: { step: StepState; ctx: Ctx }) {
+function StepRow({ talk, step, ctx }: { talk: Talk; step: StepState; ctx: Ctx }) {
+  const actions = useTalkActions();
   const sym = SYMBOL[step.status];
   const note = stepNote(step);
   const due = step.due && step.status === 'open' ? dueText(step.due, ctx.today) : null;
+  const pending = actions?.pendingSteps.has(stepId(talk.key, step.def.key)) ?? false;
+  const checkable = !!actions && (step.status === 'open' || step.status === 'unk');
   return (
-    <li className="border-line grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-2 gap-y-1 border-t py-2 first:border-t-0 sm:grid-cols-[1.25rem_minmax(0,1fr)_auto]">
-      <span aria-hidden="true" className={cn('font-mono text-base leading-5', sym.cls)}>
-        {sym.glyph}
+    <li
+      aria-busy={pending || undefined}
+      className="border-line grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-1 gap-y-0 border-t py-1 first:border-t-0 sm:grid-cols-[2.75rem_minmax(0,1fr)_auto]"
+    >
+      <span className="flex size-11 items-center justify-center">
+        {checkable ? (
+          <Checkbox
+            checked={pending}
+            disabled={pending}
+            onCheckedChange={() => actions.markDone(talk, step)}
+            aria-label={`Als erledigt markieren: ${step.def.label}`}
+            className="relative after:absolute after:-inset-3 after:content-['']"
+          />
+        ) : (
+          <span aria-hidden="true" className={cn('font-mono text-base leading-5', sym.cls)}>
+            {sym.glyph}
+          </span>
+        )}
       </span>
       <div
         className={cn(
-          'min-w-0 text-sm',
+          'min-w-0 py-2.5 text-sm',
           step.late
             ? 'text-crit'
             : step.status === 'done' || step.status === 'implied' || step.status === 'unk'
@@ -143,11 +180,17 @@ function StepRow({ step, ctx }: { step: StepState; ctx: Ctx }) {
         )}
       >
         <span className="sr-only">{STATUS_TEXT[step.status]}: </span>
-        <span className="break-words">{step.def.label}</span>
+        <span className={cn('break-words', pending && 'line-through')}>{step.def.label}</span>
         {note && <span className="text-muted block text-xs leading-snug">{note}</span>}
+        {pending && (
+          <span role="status" className="text-accent mt-0.5 flex items-center gap-1.5 text-xs">
+            <LoaderCircle className="size-3.5 motion-safe:animate-spin" aria-hidden="true" />
+            Speichert …
+          </span>
+        )}
       </div>
       {step.status !== 'implied' && (
-        <div className="col-start-2 flex flex-wrap items-center gap-x-2 gap-y-1 sm:col-start-3 sm:justify-end">
+        <div className="col-start-2 flex flex-wrap items-center gap-x-2 gap-y-1 pb-1 sm:col-start-3 sm:justify-end sm:pb-0">
           {due && step.due && (
             <span
               className={cn(
@@ -160,7 +203,21 @@ function StepRow({ step, ctx }: { step: StepState; ctx: Ctx }) {
               {formatShort(step.due, ctx.today)} · {due.text}
             </span>
           )}
-          {step.owner ? (
+          {actions ? (
+            <button
+              type="button"
+              onClick={() => actions.editStep(talk, step)}
+              aria-label={`${step.def.label} bearbeiten, Owner: ${step.owner || 'fehlt'}`}
+              className="hover:bg-accent-soft focus-visible:outline-accent -mx-1 inline-flex min-h-11 items-center gap-1.5 rounded-md px-1"
+            >
+              {step.owner ? (
+                <OwnerChip name={step.owner} member={ctx.isMember(step.owner)} />
+              ) : (
+                <Pill tone="crit">Owner fehlt</Pill>
+              )}
+              <Pencil aria-hidden="true" className="text-muted size-3.5" />
+            </button>
+          ) : step.owner ? (
             <OwnerChip name={step.owner} member={ctx.isMember(step.owner)} />
           ) : (
             <Pill tone="crit">Owner fehlt</Pill>
@@ -189,7 +246,7 @@ function Ablauf({ talk, ctx }: { talk: Talk; ctx: Ctx }) {
               <p className="text-muted mb-0.5 text-xs font-bold tracking-wide uppercase">{name}</p>
               <ul>
                 {steps.map((s) => (
-                  <StepRow key={s.def.key} step={s} ctx={ctx} />
+                  <StepRow key={s.def.key} talk={talk} step={s} ctx={ctx} />
                 ))}
               </ul>
             </div>
@@ -206,6 +263,8 @@ function Ablauf({ talk, ctx }: { talk: Talk; ctx: Ctx }) {
 // --- Eckdaten und Speaker -----------------------------------------------
 
 function Eckdaten({ talk, ctx }: { talk: Talk; ctx: Ctx }) {
+  const actions = useTalkActions();
+  const saving = actions?.pendingTalks.has(talk.key) ?? false;
   const r = talk.raw;
   const form = firstSpeakerForm(talk);
   const owner = cell(r, 'Owner');
@@ -214,7 +273,27 @@ function Eckdaten({ talk, ctx }: { talk: Talk; ctx: Ctx }) {
   const event = cell(r, 'Event-Link') || cell(r, 'Luma');
   return (
     <div>
-      <SubHeading>Eckdaten</SubHeading>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <SubHeading className="mb-0">Eckdaten</SubHeading>
+        {actions && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={saving}
+            onClick={() => actions.editFacts(talk)}
+          >
+            <Pencil aria-hidden="true" />
+            Eckdaten bearbeiten
+          </Button>
+        )}
+      </div>
+      {saving && (
+        <p role="status" className="text-accent mb-2 flex items-center gap-1.5 text-xs">
+          <LoaderCircle className="size-3.5 motion-safe:animate-spin" aria-hidden="true" />
+          Speichert …
+        </p>
+      )}
       <Facts
         items={[
           [
@@ -428,6 +507,56 @@ function AfterTalk({ talk }: { talk: Talk }) {
   );
 }
 
+// --- Verknüpfte To-dos ---------------------------------------------------
+
+/** Wird nur gemountet, wenn die Karte offen ist (TalkBody), lädt dann die To-dos. */
+function RelatedTodos({ talk, today }: { talk: Talk; today: Date }) {
+  const query = useTodosData();
+  const list = useMemo(() => {
+    if (!query.data) return [];
+    const related = relatedTodos(parseTodos(query.data, today), talk, today);
+    return [...related].sort((a, b) => Number(a.isDone) - Number(b.isDone));
+  }, [query.data, talk, today]);
+  return (
+    <div className="border-line border-t pt-4">
+      <SubHeading>
+        <span className="inline-flex items-center gap-1.5">
+          <ListTodo aria-hidden="true" className="size-4" />
+          Verknüpfte To-dos ({query.data ? list.length : '…'})
+        </span>
+      </SubHeading>
+      {query.isError ? (
+        <p className="text-muted text-sm">Die To-dos konnten nicht geladen werden.</p>
+      ) : !query.data ? (
+        <p role="status" className="text-muted text-sm">
+          To-dos werden geladen …
+        </p>
+      ) : list.length === 0 ? (
+        <p className="text-muted text-sm">Keine verknüpften To-dos.</p>
+      ) : (
+        <ul className="flex flex-col">
+          {list.map((t) => (
+            <li key={t.id || t.row} className="border-line border-t first:border-t-0">
+              <a
+                href={`#/todos/${encodeURIComponent(t.id)}`}
+                className="hover:bg-accent-soft grid min-h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 rounded-md px-1 py-2 text-sm"
+              >
+                <span className="text-muted font-mono text-xs">{t.id}</span>
+                <span className={cn('break-words', t.isDone && 'text-muted line-through')}>
+                  {t.title}
+                </span>
+                <Pill tone={t.isDone ? 'ok' : t.late ? 'crit' : 'neutral'}>
+                  {t.isDone ? 'erledigt' : t.late ? 'überfällig' : t.status}
+                </Pill>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // --- Gesamt -------------------------------------------------------------
 
 export function TalkBody({ talk, ctx }: { talk: Talk; ctx: Ctx }) {
@@ -457,6 +586,7 @@ export function TalkBody({ talk, ctx }: { talk: Talk; ctx: Ctx }) {
         </div>
       )}
       {isHeld(talk) && <AfterTalk talk={talk} />}
+      <RelatedTodos talk={talk} today={ctx.today} />
       {cell(r, 'Notizen') && (
         <div className="border-line border-t pt-4">
           <SubHeading>Notizen</SubHeading>
