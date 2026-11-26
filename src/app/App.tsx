@@ -40,7 +40,7 @@ function Shell() {
   return (
     <div className="min-h-dvh pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
       <header className="glass border-line sticky top-0 z-40 border-b pt-[env(safe-area-inset-top)]">
-        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2">
+        <div className="mx-auto flex max-w-[1180px] items-center gap-3 px-4 py-2">
           <img src="/psng-logo.png" alt="" width={36} height={36} className="size-9" />
           <h1 className="font-display text-lg font-semibold">PSNG Orga</h1>
 
@@ -68,7 +68,7 @@ function Shell() {
         <TabLinks active={route.view} isHr={isHr} mobile />
       </nav>
 
-      <main className="mx-auto max-w-5xl px-4 py-6">
+      <main className="mx-auto max-w-[1180px] px-4 py-6">
         {route.view === 'talks' && <TalksView param={route.param} />}
         {route.view === 'todos' && <TodosView />}
         {route.view === 'kandidaten' && (isHr ? <HrView /> : <NoHrAccess />)}
