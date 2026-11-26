@@ -34,6 +34,13 @@ describe('sortTodos', () => {
   });
 });
 
+describe('sortTodos mit dreistelligen IDs', () => {
+  it('T52 vor T107, nicht alphabetisch (bewusste Abweichung von der Referenz)', () => {
+    const t = todos([{ ID: 'T107' }, { ID: 'T52' }, { ID: 'T9' }, { ID: 'T115' }]);
+    expect([...t].sort(sortTodos).map((x) => x.id)).toEqual(['T9', 'T52', 'T107', 'T115']);
+  });
+});
+
 describe('Kacheln', () => {
   const t = todos([
     { Deadline: '20.11.2026', Prio: 'A' }, // überfällig, A
