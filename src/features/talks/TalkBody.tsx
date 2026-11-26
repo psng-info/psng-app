@@ -13,6 +13,7 @@ import { LevelPill, OwnerChip, Pill, SegmentLegend, SubHeading } from '@/ui/bloc
 import { Button } from '@/ui/shadcn/button';
 import { Checkbox } from '@/ui/shadcn/checkbox';
 import { cn } from '@/ui/lib/utils';
+import { QueueButton } from '@/features/ai/QueueButton';
 import { useTalkActions } from './actions';
 import {
   dueText,
@@ -599,7 +600,8 @@ export function TalkBody({ talk, ctx }: { talk: Talk; ctx: Ctx }) {
           <Prose>{cell(r, 'Notizen')}</Prose>
         </div>
       )}
-      <div className="border-line flex justify-end border-t pt-3">
+      <div className="border-line flex items-center justify-end gap-2 border-t pt-3">
+        <QueueButton kind="talks" id={talk.key} label={talk.key} />
         <ExtLink href={sheetUrl} className="min-h-11 py-2 text-sm">
           Zeile {talk.row} im Sheet
         </ExtLink>

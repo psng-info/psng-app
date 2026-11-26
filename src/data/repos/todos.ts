@@ -78,6 +78,26 @@ export async function addTodoNote(
   });
 }
 
+/** Mehrere Spalten eines To-dos setzen (z. B. aus „Mit Claude verarbeiten“), Geändert=heute. Unbekannte Spalten werden übersprungen. */
+export async function updateTodo(
+  sheets: SheetsAdapter,
+  id: string,
+  set: Record<string, string>,
+  today: Date,
+): Promise<void> {
+  const cols = Object.keys(set);
+  if (cols.length === 0) return;
+  const { header, sheetRow } = await locate(
+    sheets,
+    id,
+    cols.filter((c) => c !== 'Geändert'),
+  );
+  await writeCells(sheets, header, sheetRow, {
+    ...set,
+    Geändert: completePatch(today)['Geändert'] ?? '',
+  });
+}
+
 /** Neues To-do: frisch lesen, nächste ID, eine Zeile anhängen. Gibt die neue ID zurück. */
 export async function createTodo(
   sheets: SheetsAdapter,
@@ -151,6 +171,18 @@ export function useCompleteTodo(callbacks?: WriteCallbacks<{ id: string }, void>
     'complete',
     (s, v, day) => completeTodo(s, v.id, day),
     (values, v, day) => withCells(values, v.id, completePatch(day)),
+    callbacks,
+  );
+}
+
+export function useUpdateTodo(
+  callbacks?: WriteCallbacks<{ id: string; set: Record<string, string> }, void>,
+) {
+  return useWrite<{ id: string; set: Record<string, string> }>(
+    'update',
+    (s, v, day) => updateTodo(s, v.id, v.set, day),
+    (values, v, day) =>
+      withCells(values, v.id, { ...v.set, Geändert: completePatch(day)['Geändert'] ?? '' }),
     callbacks,
   );
 }

@@ -4,6 +4,9 @@ import { useHrData } from '@/data/repos/hr';
 import { buildPeople, hrConflict } from '@/domain/hr';
 import type { ConflictFn } from '@/domain/todos';
 import { AccessGate } from '@/features/access/AccessGate';
+import { AiDock } from '@/features/ai/Dock';
+import { useAi } from '@/features/ai/AiContext';
+import { FreeEntryButton } from '@/features/ai/FreeEntry';
 import { useHasRole } from '@/features/access/CurrentUser';
 import { UserMenu } from '@/features/access/UserMenu';
 import { HrView } from '@/features/hr';
@@ -40,9 +43,15 @@ function Shell() {
   const route = useHashRoute();
   const { theme, setTheme } = useTheme();
   const ThemeIcon = THEME_ICON[theme];
+  const ai = useAi();
 
   return (
-    <div className="min-h-dvh pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+    <div
+      className={cn(
+        'min-h-dvh pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0',
+        ai.count > 0 && 'pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-20',
+      )}
+    >
       <button
         type="button"
         onClick={() => document.getElementById('inhalt')?.focus()}
@@ -59,12 +68,15 @@ function Shell() {
             <TabLinks active={route.view} isHr={isHr} />
           </nav>
 
+          <span className="ml-auto">
+            <FreeEntryButton />
+          </span>
           <button
             type="button"
             onClick={() => setTheme(THEME_NEXT[theme])}
             aria-label={`${THEME_LABEL[theme]}. Wechseln`}
             title={THEME_LABEL[theme]}
-            className="hover:bg-accent-soft ml-auto inline-flex size-11 items-center justify-center rounded-md"
+            className="hover:bg-accent-soft inline-flex size-11 items-center justify-center rounded-md"
           >
             <ThemeIcon className="size-5" aria-hidden="true" />
           </button>
@@ -78,6 +90,8 @@ function Shell() {
       >
         <TabLinks active={route.view} isHr={isHr} mobile />
       </nav>
+
+      <AiDock />
 
       <main id="inhalt" tabIndex={-1} className="mx-auto max-w-[1180px] px-4 py-6 outline-none">
         {route.view === 'talks' && <TalksView param={route.param} />}

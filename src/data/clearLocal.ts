@@ -1,3 +1,4 @@
+import { STORAGE_KEY as AI_QUEUE_KEY } from '@/domain/ai/queue';
 import { CACHE_DB } from './persist';
 
 const deleteDb = (name: string): Promise<void> =>
@@ -17,6 +18,12 @@ const deleteDb = (name: string): Promise<void> =>
  */
 export async function clearAllLocalData(): Promise<void> {
   const tasks: Promise<unknown>[] = [];
+
+  try {
+    localStorage.removeItem(AI_QUEUE_KEY);
+  } catch {
+    // localStorage gesperrt: nichts zu löschen
+  }
 
   if (typeof indexedDB !== 'undefined') {
     // Den Lesecache immer ausdrücklich löschen: indexedDB.databases() gibt es nicht in jedem Browser.

@@ -63,3 +63,6 @@ export const DATA_MODE: DataMode =
         : 'demo';
 
 export const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/spreadsheets openid email';
+
+/** v2-Prototyp „Mit Claude verarbeiten“. Nur mit `VITE_AI=on`, sonst ist nichts davon im UI zu sehen. */
+export const AI_ENABLED: boolean = import.meta.env.VITE_AI === 'on';

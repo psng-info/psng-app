@@ -11,6 +11,6 @@ export default defineConfig({
     env: { VITE_DATA: 'demo', VITE_GOOGLE_CLIENT_ID: '' },
     globals: true,
     setupFiles: ['src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'api/**/*.test.ts'],
   },
 });

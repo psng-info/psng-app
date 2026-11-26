@@ -1,6 +1,7 @@
 {
   "framework": "vite",
   "regions": ["fra1"],
+  "functions": { "api/claude.ts": { "maxDuration": 60 } },
   "headers": [
     {
       "source": "/(.*)",

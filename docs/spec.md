@@ -87,6 +87,21 @@ Bereiche: `Kandidaten!A1:AA1000`, `Abbrüche!A1:AC1000`, `'Formularantworten 1'!
 ## Zugang
 Tab `Zugang` im Lecture-Sheet: E-Mail, Name, Rollen (kommagetrennt: kern, hr, admin). Vergleich der Login-E-Mail klein geschrieben. Namen dieser Liste sind die Teamnamen (Owner-Auswahl, Avatare/Initialen).
 
+## KI v2: „Mit Claude verarbeiten“ (Prototyp, hinter `VITE_AI=on`)
+Entscheidung und Begründung: `docs/decisions/0006-ki-function.md`.
+
+**Ablauf:** Notizen vormerken (je To-do, Person, Talk, plus freie Einträge) → Leiste „N vorgemerkt · Mit Claude verarbeiten“ → `POST /api/claude` → JSON-Plan → Vorschau als Diff mit Haken je Änderung → „Ins Sheet schreiben“ → bestehende Schreibfunktionen (Zeile frisch lesen, Schlüssel, `safeCell`). „Ergänzen/korrigieren“ rechnet neu, abgewählte Einträge bleiben abgewählt. Nichts wird vor dem Klick geschrieben.
+
+**Plan:** `{ todo: [{id, set, why}], hr: [{key, set, why}], new: [{set, why}], talk: [{key, set, why}], steps: [{key, step, status, owner, note, why}] }`. `set` = Spalte → vollständiger neuer Wert. Erlaubte Spalten und Werte: wie bei den Schreibaktionen (To-dos: ohne ID, Erfasst, Link; HR: `HR_EDIT`; Talks: `LECTURE_EDITABLE`; Schritte: die 19 Schlüssel, Status erledigt | offen | nicht nötig). Unbekanntes fällt weg, Änderungen, die schon so im Sheet stehen, auch. Neue To-dos laufen durch dieselbe Prüfung wie das Formular (z. B. Prio A braucht Deadline); Verstöße stehen in der Vorschau und sind gesperrt.
+
+**Limits:** höchstens 30 Einträge je Art, 20 freie, 2000 Zeichen je Notiz, 80 offene To-dos als Zuordnungs-Kontext. Tageslimit pro Person (Standard 20, „Gründlich“ zählt 3), best effort pro Function-Instanz; die harte Grenze ist das Ausgabenlimit in der Claude Console.
+
+**Datenschutz:** nur änderbare Spalten der betroffenen Zeilen; von Personen nur Schlüssel, Vorname und Pipeline-Felder; E-Mail, Telefon, Links und Nachnamen werden im Browser und in der Function entfernt, in freiem Text zusätzlich per Muster. HR-Notizen nur mit Rolle `hr`, nie in `localStorage`. Keine Logs von Inhalten.
+
+**Kosten:** Standard `claude-haiku-5-5`; `claude-sonnet-5-5` nur bei „Gründlich“.
+
+**Demo:** Mock-Planer ohne Netzwerk (`mockPlan`). Regeln: „erledigt/fertig“ hakt ab, sonst Notiz anhängen („TT.MM.: Text“); „Zoom“ bei Talks setzt den Schritt Raum/Zoom; freie Einträge werden neue To-dos oder (mit führender ID) Notiz am offenen To-do; Ergänzung „Prio A“ setzt Prio A plus Deadline in 7 Tagen, „keine neuen“ unterdrückt neue To-dos.
+
 ## Offene Fragen
 1. Mood-Meter im UI zeigen? (im Dashboard war es eine „Spielerei“; die Berechnung existiert in der Domain)
 2. Tab `Konfiguration` (Schritte, Rollen): Spalten mit Lennert abstimmen, bevor er angelegt wird.
