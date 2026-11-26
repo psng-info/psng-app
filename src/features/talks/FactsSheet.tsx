@@ -4,6 +4,7 @@ import { cell } from '@/domain/talks/steps';
 import type { Talk } from '@/domain/talks/types';
 import { checkLectureSet } from '@/domain/talks/write';
 import { SelectField, TextArea, TextField } from '@/ui/blocks';
+import { expectedCells } from './format';
 import { Button } from '@/ui/shadcn/button';
 import {
   Sheet,
@@ -85,7 +86,16 @@ function toCell(f: Field, v: string): string {
 /** Welche Felder das Formular für diesen Talk zeigt: nur Spalten, die in Lectures vorkommen. */
 const factFields = (talk: Talk): Field[] => FIELDS.filter((f) => f.col in talk.raw);
 
-/** Bottom-Sheet „Eckdaten bearbeiten“. Liefert nur geänderte Spalten. Speaker und TN gesamt sind nicht dabei. */
+/**
+ * Bottom-Sheet „Eckdaten bearbeiten“. Liefert nur geänderte Spalten. Speaker und TN gesamt sind nicht dabei.
+ * `expected` = Zellwerte dieser Spalten beim Öffnen; das Schreiben prüft damit, ob jemand parallel geändert hat.
+ */
+export type SaveFacts = (
+  talk: Talk,
+  set: Record<string, string>,
+  expected: Record<string, string>,
+) => void;
+
 export function FactsSheet({
   talk,
   onClose,
@@ -93,7 +103,7 @@ export function FactsSheet({
 }: {
   talk: Talk | null;
   onClose: () => void;
-  onSave: (talk: Talk, set: Record<string, string>) => void;
+  onSave: SaveFacts;
 }) {
   return (
     <Sheet open={talk !== null} onOpenChange={(o) => !o && onClose()}>
@@ -104,13 +114,7 @@ export function FactsSheet({
   );
 }
 
-function FactsForm({
-  talk,
-  onSave,
-}: {
-  talk: Talk;
-  onSave: (talk: Talk, set: Record<string, string>) => void;
-}) {
+function FactsForm({ talk, onSave }: { talk: Talk; onSave: SaveFacts }) {
   const fields = factFields(talk);
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(fields.map((f) => [f.col, initial(talk, f)])),
@@ -138,7 +142,7 @@ function FactsForm({
           setError(err instanceof Error ? err.message : 'Eingabe ungültig.');
           return;
         }
-        onSave(talk, set);
+        onSave(talk, set, expectedCells(talk, set));
       }}
     >
       <SheetHeader className="pr-10">

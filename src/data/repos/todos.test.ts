@@ -3,6 +3,7 @@ import type { Values } from '@/domain/rows';
 import { TODO_HEADER, todoValues } from '@/domain/todos/test-helpers';
 import { SHEET_IDS } from '../config';
 import { SheetsError, type SheetsAdapter } from '../sheets/SheetsAdapter';
+import { parseCell, splitRange } from '../sheets/table';
 import { addTodoNote, completeTodo, createTodo } from './todos';
 
 const TODAY = new Date(2026, 10, 26);
@@ -23,7 +24,7 @@ function fake(values: Values) {
     },
     append: (id, range, row) => {
       calls.push({ kind: 'append', args: [id, range, row] });
-      return Promise.resolve();
+      return Promise.resolve(null);
     },
   };
   return { adapter, calls, reads: () => reads };
@@ -138,5 +139,109 @@ describe('createTodo', () => {
     const f = fake(todoValues([]));
     await expect(createTodo(f.adapter, { 'To-do': '' }, TODAY)).rejects.toBeInstanceOf(SheetsError);
     expect(f.calls).toHaveLength(0);
+  });
+});
+
+/** Fake mit echtem Speicher: Zellen und Zeilen landen in `values`, `append` meldet die Zeilennummer. */
+function sheet(
+  values: Values,
+  opts: { beforeAppend?: (v: Values) => void; failCell?: number } = {},
+) {
+  let cells = 0;
+  const adapter: SheetsAdapter = {
+    batchGet: () => Promise.resolve([values.map((r) => [...r])]),
+    updateCell: (_id, a1, value) => {
+      cells++;
+      if (opts.failCell === cells) {
+        return Promise.reject(new SheetsError('network', 'Keine Verbindung zu Google.'));
+      }
+      const cell = parseCell(splitRange(a1).cells);
+      if (cell) (values[cell.row - 1] ??= [])[cell.col] = String(value);
+      return Promise.resolve();
+    },
+    append: (_id, _range, row) => {
+      opts.beforeAppend?.(values);
+      values.push(row.map(String));
+      return Promise.resolve(values.length);
+    },
+  };
+  return adapter;
+}
+
+describe('Schreiben bei parallelen Änderungen und Teilfehlern', () => {
+  it('createTodo: legt jemand gleichzeitig dieselbe ID an, bekommt unsere Zeile die nächste', async () => {
+    const values = todoValues([{ ID: 'T05' }]);
+    const idCol = TODO_HEADER.indexOf('ID');
+    const other = (v: Values) => {
+      const row = TODO_HEADER.map(() => '');
+      row[idCol] = 'T06';
+      v.push(row); // die andere Person war ein paar Millisekunden schneller
+    };
+    const id = await createTodo(sheet(values, { beforeAppend: other }), { 'To-do': 'Neu' }, TODAY);
+    expect(id).toBe('T07');
+    expect(values.slice(1).map((r) => r[idCol])).toEqual(['T05', 'T06', 'T07']);
+  });
+
+  it('createTodo: war unsere Zeile die erste mit der ID, bleibt sie (die andere weicht aus)', async () => {
+    const values = todoValues([{ ID: 'T05' }]);
+    const idCol = TODO_HEADER.indexOf('ID');
+    const adapter = sheet(values);
+    const append = adapter.append.bind(adapter);
+    adapter.append = async (id, range, row) => {
+      const n = await append(id, range, row);
+      const late = TODO_HEADER.map(() => '');
+      late[idCol] = 'T06';
+      values.push(late); // die andere Person kam direkt nach uns
+      return n;
+    };
+    expect(await createTodo(adapter, { 'To-do': 'Neu' }, TODAY)).toBe('T06');
+    expect(values[2]?.[idCol]).toBe('T06');
+  });
+
+  it('createTodo ohne Konflikt: ID bleibt, kein zusätzlicher Schreibzugriff', async () => {
+    const values = todoValues([{ ID: 'T05' }]);
+    expect(await createTodo(sheet(values), { 'To-do': 'Neu' }, TODAY)).toBe('T06');
+    expect(values).toHaveLength(3);
+  });
+
+  it('doppelte ID im Sheet: Abhaken schreibt nicht in irgendeine der Zeilen', async () => {
+    const f = fake(todoValues([{ ID: 'T01' }, { ID: 'T01' }]));
+    const err = await completeTodo(f.adapter, 'T01', TODAY).catch((e: unknown) => e);
+    expect((err as SheetsError).kind).toBe('row_missing');
+    expect((err as SheetsError).message).toMatch(/mehrfach/);
+    expect(f.calls.every((c) => c.kind === 'get')).toBe(true);
+  });
+
+  it('Teilfehler: Meldung sagt „nur teilweise gespeichert“, ohne Zellinhalte', async () => {
+    const values = todoValues([{ ID: 'T01', 'To-do': 'Geheimer Inhalt' }]);
+    const err = await completeTodo(sheet(values, { failCell: 2 }), 'T01', TODAY).catch(
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(SheetsError);
+    expect((err as SheetsError).kind).toBe('network');
+    expect((err as SheetsError).message).toMatch(/^Nur teilweise gespeichert \(1 von 3 Feldern\)/);
+    expect((err as SheetsError).message).not.toContain('Geheim');
+  });
+
+  it('Fehler bei der ersten Zelle: normale Meldung', async () => {
+    const values = todoValues([{ ID: 'T01' }]);
+    const err = await completeTodo(sheet(values, { failCell: 1 }), 'T01', TODAY).catch(
+      (e: unknown) => e,
+    );
+    expect((err as SheetsError).message).toBe('Keine Verbindung zu Google.');
+  });
+
+  it('zu langer Text: nichts geschrieben, klare Meldung', async () => {
+    const f = fake(todoValues([{ ID: 'T01' }]));
+    const err = await addTodoNote(f.adapter, 'T01', 'x'.repeat(50_001), TODAY).catch(
+      (e: unknown) => e,
+    );
+    expect((err as SheetsError).kind).toBe('invalid');
+    expect(f.calls.every((c) => c.kind === 'get')).toBe(true);
+    const g = fake(todoValues([]));
+    await expect(
+      createTodo(g.adapter, { 'To-do': 'x'.repeat(50_001) }, TODAY),
+    ).rejects.toMatchObject({ kind: 'invalid' });
+    expect(g.calls.some((c) => c.kind === 'append')).toBe(false);
   });
 });

@@ -44,7 +44,7 @@ const MINUTE = 60_000;
 export const REFETCH = {
   talks: 15 * MINUTE,
   todos: 5 * MINUTE,
-  hr: 10 * MINUTE,
+  hr: 15 * MINUTE,
 } as const;
 export const STALE_MS = { talks: MINUTE, todos: MINUTE, hr: MINUTE, access: 10 * MINUTE } as const;
 

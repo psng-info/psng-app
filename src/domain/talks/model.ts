@@ -35,23 +35,34 @@ export function talkKey(date: Date | null, speakerCell: string): string {
 /**
  * Sheet-Zeilennummer (Kopfzeile = 1) der Lecture zu `key`, frisch aus `values` gesucht.
  * Erst gleiches Datum und exakte Speaker-Zelle, dann gleiches Datum und `nameMatch`. Sonst null.
+ * Nur Zeilen mit Speaker oder Titel zählen (wie im Modell), Leerzeilen nie.
+ * Passen mehrere Zeilen (z. B. zwei Ideen ohne Datum und ohne Speaker), ist der Schlüssel nicht
+ * eindeutig: dann null, damit nie in die falsche Zeile geschrieben wird.
  */
 export function findLectureRow(values: Values, key: string): number | null {
   const head = (values[0] ?? []).map((h) => String(h).trim());
   const iDate = head.indexOf('Datum');
   const iSpeaker = head.indexOf('Speaker');
+  const iTitle = head.indexOf('Titel');
   if (iDate < 0 || iSpeaker < 0) return null;
   const parts = key.split(' · ');
   const keyDate = parts[0] === 'ohne Datum' ? null : parseDate(parts[0]);
   const keySpeaker = parts.slice(1).join(' · ');
+  const text = (cells: string[], i: number): string => (i < 0 ? '' : String(cells[i] ?? '').trim());
   const sameDate = (cells: string[]): boolean => {
     const d = parseDate(cells[iDate]);
     return keyDate ? !!d && +d === +keyDate : !d;
   };
-  const data = values.slice(1);
-  let i = data.findIndex((c) => sameDate(c) && String(c[iSpeaker] ?? '').trim() === keySpeaker);
-  if (i < 0) i = data.findIndex((c) => sameDate(c) && nameMatch(c[iSpeaker], keySpeaker));
-  return i < 0 ? null : i + 2;
+  const rows = values
+    .map((cells, i) => ({ cells, row: i + 1 }))
+    .slice(1)
+    .filter(({ cells }) => (text(cells, iSpeaker) || text(cells, iTitle)) && sameDate(cells));
+  const only = (hits: typeof rows): number | null | undefined =>
+    hits.length === 1 ? (hits[0]?.row ?? null) : hits.length > 1 ? null : undefined;
+  const exact = only(rows.filter(({ cells }) => text(cells, iSpeaker) === keySpeaker));
+  if (exact !== undefined) return exact;
+  if (!keySpeaker) return null;
+  return only(rows.filter(({ cells }) => nameMatch(cells[iSpeaker], keySpeaker))) ?? null;
 }
 
 // --- Schritte ------------------------------------------------------------

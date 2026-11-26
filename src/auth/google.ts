@@ -4,6 +4,8 @@ import { GOOGLE_SCOPES } from '@/data/config';
 interface GsiTokenResponse {
   access_token?: string;
   expires_in?: number | string;
+  /** Tatsächlich gewährte Scopes, durch Leerzeichen getrennt (bei Einzelfreigabe evtl. weniger als angefragt). */
+  scope?: string;
   error?: string;
 }
 interface GsiError {
@@ -28,6 +30,15 @@ interface GsiGlobal {
 
 const GSI_SRC = 'https://accounts.google.com/gsi/client';
 const REFRESH_MARGIN_MS = 2 * 60_000;
+const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
+
+/**
+ * Google lässt Nutzer:innen einzelne Berechtigungen abwählen. Ohne Sheets-Scope würde jede Abfrage
+ * mit 403 scheitern und wie „keine Freigabe im Drive“ aussehen. Fehlt `scope`, gilt alles als gewährt.
+ */
+export function grantsSheets(scope: string | undefined): boolean {
+  return scope === undefined || scope.split(/\s+/).includes(SHEETS_SCOPE);
+}
 
 export type AuthFailure = 'cancelled' | 'popup_blocked' | 'failed';
 
@@ -43,8 +54,12 @@ export class AuthError extends Error {
 
 let scriptPromise: Promise<void> | null = null;
 
+const gsiLoaded = (): boolean =>
+  !!(window as unknown as { google?: GsiGlobal }).google?.accounts?.oauth2;
+
 /** Lädt das Google-Skript erst auf Anfrage (nur Anmeldeseite). */
 export function loadGsiScript(): Promise<void> {
+  if (gsiLoaded()) return Promise.resolve();
   scriptPromise ??= new Promise<void>((resolve, reject) => {
     const el = document.createElement('script');
     el.src = GSI_SRC;
@@ -95,6 +110,16 @@ export class GoogleSession {
           this.settle(null, new AuthError('failed', 'Anmeldung bei Google fehlgeschlagen.'));
           return;
         }
+        if (!grantsSheets(r.scope)) {
+          this.settle(
+            null,
+            new AuthError(
+              'failed',
+              'Ohne Zugriff auf Google Sheets funktioniert die App nicht. Bitte erneut anmelden und den Zugriff auf Tabellen erlauben.',
+            ),
+          );
+          return;
+        }
         this.token = r.access_token;
         this.expiresAt = Date.now() + Number(r.expires_in ?? 3600) * 1000;
         this.settle(r.access_token, null);
@@ -132,14 +157,22 @@ export class GoogleSession {
       handlers = { resolve, reject };
     });
     this.pending = { promise, handlers };
-    this.prepare().then(
-      () => this.client?.requestAccessToken({ prompt }),
-      (e: unknown) =>
-        this.settle(
-          null,
-          e instanceof AuthError ? e : new AuthError('failed', 'Anmeldung fehlgeschlagen.'),
-        ),
-    );
+    const fail = (e: unknown) =>
+      this.settle(
+        null,
+        e instanceof AuthError ? e : new AuthError('failed', 'Anmeldung fehlgeschlagen.'),
+      );
+    const ask = () => {
+      try {
+        this.client?.requestAccessToken({ prompt });
+      } catch (e) {
+        fail(e);
+      }
+    };
+    // Ist der Client schon bereit, sofort fragen, also noch im selben Klick. Nach einem `await`
+    // werten manche Browser (vor allem Safari) das Google-Fenster nicht mehr als Klickfolge und blockieren es.
+    if (this.client) ask();
+    else this.prepare().then(ask, fail);
     return promise;
   }
 

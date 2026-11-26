@@ -46,7 +46,7 @@ class Fake implements SheetsAdapter {
     return Promise.resolve();
   }
   append() {
-    return Promise.resolve();
+    return Promise.resolve(null);
   }
 }
 

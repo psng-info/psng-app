@@ -38,13 +38,14 @@ describe('DemoAdapter', () => {
   it('Schreiben ändert nur die Kopie im Speicher', async () => {
     const demo = new DemoAdapter(0);
     await demo.updateCell(SHEET_IDS.lectures, 'Lectures!B2', 'Neuer Wert');
-    await demo.append(SHEET_IDS.lectures, "'Talk-Schritte'!A1", ['a', true]);
+    const row = await demo.append(SHEET_IDS.lectures, "'Talk-Schritte'!A1", ['a', true]);
     const [lectures, steps] = await demo.batchGet(SHEET_IDS.lectures, [
       RANGES.talks.lectures,
       RANGES.talks.steps,
     ]);
     expect(lectures?.[1]?.[1]).toBe('Neuer Wert');
     expect(steps?.at(-1)).toEqual(['a', 'TRUE']);
+    expect(row).toBe(steps?.length);
     const fresh = await new DemoAdapter(0).batchGet(SHEET_IDS.lectures, [RANGES.talks.lectures]);
     expect(fresh[0]?.[1]?.[1]).not.toBe('Neuer Wert');
   });

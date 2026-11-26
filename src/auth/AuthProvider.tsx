@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DATA_MODE, GOOGLE_CLIENT_ID } from '@/data/config';
 import { clearAllLocalData } from '@/data/clearLocal';
 import { DEMO_EMAIL } from '@/data/sheets/DemoAdapter';
@@ -42,24 +42,47 @@ function GoogleAuth({ children }: { children: ReactNode }) {
     session?.prepare().catch(() => undefined);
   }, [session]);
 
+  // Letzte angemeldete E-Mail (nur im Speicher), um einen Kontowechsel zu erkennen.
+  const lastEmail = useRef<string | null>(null);
+
   const signIn = useCallback(async () => {
     if (!session) return;
     setError(null);
     setStatus('signing_in');
     try {
       const token = await session.signIn();
-      setEmail(await fetchUserEmail(token));
+      let next: string;
+      try {
+        next = await fetchUserEmail(token);
+      } catch (e) {
+        // Ohne E-Mail keine Zugangsprüfung: das Token nicht im Speicher liegen lassen.
+        await session.revoke();
+        throw e;
+      }
+      if (lastEmail.current !== null && lastEmail.current !== next) {
+        // Anderes Konto als vorher (z. B. nach Ablauf neu angemeldet): nichts vom alten Konto behalten.
+        queryClient.clear();
+        await clearAllLocalData();
+      } else {
+        // Gleiches Konto: alte Fehler (z. B. „Anmeldung abgelaufen“ in der Zugangsprüfung) verwerfen
+        // und alles mit dem neuen Token frisch laden. Ohne das bliebe die Anmeldeseite stehen.
+        queryClient.removeQueries({ queryKey: ['access'] });
+        void queryClient.invalidateQueries();
+      }
+      lastEmail.current = next;
+      setEmail(next);
       setStatus('signed_in');
     } catch (e) {
       setStatus('signed_out');
       setError(e instanceof AuthError ? e.message : 'Anmeldung fehlgeschlagen.');
     }
-  }, [session]);
+  }, [session, queryClient]);
 
   const signOut = useCallback(async () => {
     await session?.revoke();
     queryClient.clear();
     await clearAllLocalData();
+    lastEmail.current = null;
     setEmail(null);
     setError(null);
     setStatus('signed_out');

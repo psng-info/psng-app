@@ -1,5 +1,6 @@
 import type { Values } from '@/domain/rows';
 import { SheetsError, type SheetsAdapter } from './SheetsAdapter';
+import { parseCell, splitRange } from './table';
 
 const BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
 
@@ -11,9 +12,22 @@ type FetchLike = typeof fetch;
 interface ValueRangeResponse {
   valueRanges?: { values?: (string | number | boolean | null)[][] }[];
 }
+interface AppendResponse {
+  updates?: { updatedRange?: string };
+}
 
-/** Fehlertexte enthalten nie Zellinhalte, Tokens oder Bereiche. */
-function errorFor(status: number): SheetsError {
+/**
+ * Fehlertexte enthalten nie Zellinhalte, Tokens oder Bereiche.
+ * `write`: beim Schreiben heißt 400 meist „Wert abgelehnt“ (z. B. zu lang), beim Lesen „Tab fehlt“.
+ */
+function errorFor(status: number, write: boolean): SheetsError {
+  if (status === 400 && write) {
+    return new SheetsError(
+      'invalid',
+      'Google hat den Wert abgelehnt. Ist der Text sehr lang oder wurde ein Tab umbenannt?',
+      400,
+    );
+  }
   switch (status) {
     case 401:
       return new SheetsError('unauthenticated', 'Anmeldung abgelaufen. Bitte neu anmelden.', 401);
@@ -75,19 +89,27 @@ export class GoogleSheetsAdapter implements SheetsAdapter {
     });
   }
 
-  async append(spreadsheetId: string, range: string, row: (string | boolean)[]): Promise<void> {
+  async append(
+    spreadsheetId: string,
+    range: string,
+    row: (string | boolean)[],
+  ): Promise<number | null> {
     const url = `${BASE}/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
-    await this.send(url, {
+    const res = await this.send(url, {
       method: 'POST',
       body: JSON.stringify({ majorDimension: 'ROWS', values: [row] }),
     });
+    // Google meldet, wo die Zeile gelandet ist, z. B. `'To-dos'!A120:R120`.
+    const json = (await res.json().catch(() => null)) as AppendResponse | null;
+    const updated = json?.updates?.updatedRange;
+    return updated ? (parseCell(splitRange(updated).cells)?.row ?? null) : null;
   }
 
   /** Eine Anfrage mit Token. Bei 401 einmal mit frischem Token wiederholen. */
   private async send(url: string, init: { method: string; body?: string }): Promise<Response> {
     let res = await this.once(url, init, false);
     if (res.status === 401) res = await this.once(url, init, true);
-    if (!res.ok) throw errorFor(res.status);
+    if (!res.ok) throw errorFor(res.status, init.method !== 'GET');
     return res;
   }
 

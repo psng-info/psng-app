@@ -146,6 +146,7 @@ export function PersonCard({ person: p, today, onEdit, onStatus, onReview }: Pro
                 state={g.checks[i] ?? 'open'}
                 value={st.col ? (k[st.col] ?? '') : ''}
                 today={today}
+                disabled={!online}
                 onTick={(set) => onEdit(p, set)}
                 onReview={() => onReview(p)}
               />
@@ -198,6 +199,7 @@ function StepRow({
   state,
   value,
   today,
+  disabled,
   onTick,
   onReview,
 }: {
@@ -205,6 +207,8 @@ function StepRow({
   state: 'done' | 'implied' | 'open';
   value: string;
   today: Date;
+  /** Offline: Häkchen und Ergebnis sind gesperrt (Schreiben braucht eine Verbindung). */
+  disabled: boolean;
   onTick: (set: HrSet) => void;
   onReview: () => void;
 }) {
@@ -223,7 +227,7 @@ function StepRow({
     hint = done ? 'automatisch erkannt' : 'automatisch';
   } else if (step.kind === 'note') {
     control = (
-      <Button type="button" variant="outline" size="sm" onClick={onReview}>
+      <Button type="button" variant="outline" size="sm" onClick={onReview} disabled={disabled}>
         {value ? 'Ergebnis ändern' : 'Ergebnis eintragen'}
       </Button>
     );
@@ -232,7 +236,7 @@ function StepRow({
       <Checkbox
         id={id}
         checked={done}
-        disabled={done}
+        disabled={done || disabled}
         onCheckedChange={(c) => c === true && col && onTick({ [col]: formatDate(today) })}
       />
     );
@@ -242,6 +246,7 @@ function StepRow({
       <Checkbox
         id={id}
         checked={done}
+        disabled={disabled}
         onCheckedChange={(c) => col && onTick({ [col]: c === true })}
       />
     );

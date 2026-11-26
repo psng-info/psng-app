@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GoogleSheetsAdapter } from './GoogleSheetsAdapter';
-import { SheetsError } from './SheetsAdapter';
+import { SheetsError, shouldRetry } from './SheetsAdapter';
 
 function res(status: number, body: unknown = {}): Response {
   return new Response(JSON.stringify(body), { status });
@@ -67,6 +67,22 @@ describe('GoogleSheetsAdapter', () => {
     });
   });
 
+  it('append: gibt die Zeilennummer aus updatedRange zurück', async () => {
+    const { adapter } = setup([res(200, { updates: { updatedRange: "'To-dos'!A120:R120" } })]);
+    expect(await adapter.append('S', "'To-dos'!A1", ['x'])).toBe(120);
+    const none = setup([res(200, {})]);
+    expect(await none.adapter.append('S', "'To-dos'!A1", ['x'])).toBeNull();
+  });
+
+  it('400 beim Schreiben: Wert abgelehnt (nicht „Tab fehlt“), ohne Google-Text', async () => {
+    const { adapter } = setup([res(400, { error: { message: 'GEHEIMER ZELLINHALT' } })]);
+    const err = await kindOf(adapter.updateCell('S', 'Lectures!F12', 'x'));
+    expect(err.kind).toBe('invalid');
+    expect(err.message).not.toContain('GEHEIM');
+    const read = setup([res(400)]);
+    expect((await kindOf(read.adapter.batchGet('S', ['A!A1']))).kind).toBe('not_found');
+  });
+
   it('401: einmal mit frischem Token wiederholen', async () => {
     const { adapter, getToken } = setup([
       res(401),
@@ -117,5 +133,17 @@ describe('GoogleSheetsAdapter', () => {
       vi.fn<typeof fetch>(),
     );
     expect((await kindOf(adapter.batchGet('S', ['A!A1']))).kind).toBe('unauthenticated');
+  });
+});
+
+describe('shouldRetry', () => {
+  it('wiederholt Netz- und Limitfehler einmal, Freigabe- und Anmeldefehler nie', () => {
+    expect(shouldRetry(0, new SheetsError('network', 'x'))).toBe(true);
+    expect(shouldRetry(0, new SheetsError('quota', 'x'))).toBe(true);
+    expect(shouldRetry(1, new SheetsError('network', 'x'))).toBe(false);
+    expect(shouldRetry(0, new SheetsError('forbidden', 'x'))).toBe(false);
+    expect(shouldRetry(0, new SheetsError('unauthenticated', 'x'))).toBe(false);
+    expect(shouldRetry(0, new SheetsError('missing_column', 'x'))).toBe(false);
+    expect(shouldRetry(0, new Error('x'))).toBe(true);
   });
 });

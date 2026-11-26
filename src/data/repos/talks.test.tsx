@@ -56,7 +56,7 @@ class Fake implements SheetsAdapter {
     if (this.fail) return Promise.reject(new SheetsError('forbidden', 'Keine Freigabe.'));
     this.appends.push([range, row]);
     this.steps.push(row.map(String));
-    return Promise.resolve();
+    return Promise.resolve(this.steps.length);
   }
 }
 
@@ -142,6 +142,33 @@ describe('updateLecture', () => {
       'Zeile für 01.01.2027 · Zoe nicht gefunden. Neu laden und nochmal versuchen.',
     );
     expect(f.writes).toEqual([]);
+  });
+});
+
+describe('updateLecture: parallele Änderungen', () => {
+  it('Zelle seit dem Öffnen unverändert: wird geschrieben', async () => {
+    const f = new Fake();
+    await updateLecture(f, KEY, { Status: 'fix' }, { Status: 'Idee' });
+    expect(f.writes).toEqual([['Lectures!D3', 'fix']]);
+  });
+  it('jemand hat dieselbe Zelle inzwischen geändert: conflict, nichts geschrieben', async () => {
+    const f = new Fake();
+    const err = await updateLecture(
+      f,
+      KEY,
+      { Status: 'fix', Ort: 'Raum 9' },
+      { Status: 'angefragt', Ort: 'Raum 1' },
+    ).catch((e: unknown) => e);
+    expect((err as SheetsError).kind).toBe('conflict');
+    expect((err as SheetsError).message).toBe(
+      '„Status“ wurde inzwischen im Sheet geändert. Neu laden und nochmal versuchen.',
+    );
+    expect(f.writes).toEqual([]);
+  });
+  it('Datum in anderer Schreibweise gilt als unverändert', async () => {
+    const f = new Fake();
+    await updateLecture(f, KEY, { Datum: '2026-12-11' }, { Datum: '10.12.26' });
+    expect(f.writes).toEqual([['Lectures!A3', '11.12.2026']]);
   });
 });
 

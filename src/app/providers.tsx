@@ -4,7 +4,8 @@ import { useState, type ReactNode } from 'react';
 import { AuthProvider } from '@/auth/AuthProvider';
 import { AdapterProvider } from '@/data/AdapterContext';
 import { DATA_MODE } from '@/data/config';
-import { APP_VERSION, CACHE_MAX_AGE, createIdbPersister, shouldPersist } from '@/data/persist';
+import { shouldRetry } from '@/data/sheets/SheetsAdapter';
+import { APP_VERSION, CACHE_MAX_AGE, createIdbPersister, DEHYDRATE_OPTIONS } from '@/data/persist';
 
 /** Im Sheets-Modus hält der Lesecache (IndexedDB) To-dos, Talks und Zugangsliste bis zu 7 Tage vor. Im Demo-Modus gibt es keinen. */
 export function Providers({ children }: { children: ReactNode }) {
@@ -15,7 +16,7 @@ export function Providers({ children }: { children: ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 30_000,
-            retry: 1,
+            retry: shouldRetry,
             // gcTime muss mindestens so lang sein wie der Cache, sonst wird er beim Wiederherstellen verworfen.
             ...(demo ? {} : { gcTime: CACHE_MAX_AGE }),
           },
@@ -38,7 +39,7 @@ export function Providers({ children }: { children: ReactNode }) {
         persister,
         maxAge: CACHE_MAX_AGE,
         buster: APP_VERSION,
-        dehydrateOptions: { shouldDehydrateQuery: shouldPersist },
+        dehydrateOptions: DEHYDRATE_OPTIONS,
       }}
     >
       {inner}

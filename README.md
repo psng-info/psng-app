@@ -71,17 +71,17 @@ Abmelden einer Person: dieselben drei Schritte rückwärts (siehe `docs/runbook.
 
 ## Befehle
 
-| Befehl              | Zweck                                                                                                    |
-| ------------------- | -------------------------------------------------------------------------------------------------------- |
-| `npm run dev`       | Entwicklungsserver mit echtem Login (Port 5173)                                                          |
-| `npm run dev:demo`  | Entwicklungsserver mit Demo-Daten                                                                        |
-| `npm run build`     | Typprüfung und Produktionsbuild nach `dist/`                                                             |
-| `npm run preview`   | Gebauten Stand lokal ansehen                                                                             |
-| `npm run typecheck` | TypeScript prüfen                                                                                        |
-| `npm run lint`      | Lint (ESLint)                                                                                            |
-| `npm run format`    | Dateien mit Prettier formatieren                                                                         |
-| `npm test`          | Unit-Tests (Vitest)                                                                                      |
-| `npm run e2e`       | Klickpfade und Barrierefreiheit im Demo-Modus (Playwright, startet den Demo-Server selbst auf Port 4173) |
+| Befehl              | Zweck                                                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------- |
+| `npm run dev`       | Entwicklungsserver mit echtem Login (Port 5173)                                                       |
+| `npm run dev:demo`  | Entwicklungsserver mit Demo-Daten                                                                     |
+| `npm run build`     | Typprüfung und Produktionsbuild nach `dist/`                                                          |
+| `npm run preview`   | Gebauten Stand lokal ansehen                                                                          |
+| `npm run typecheck` | TypeScript prüfen                                                                                     |
+| `npm run lint`      | Lint (ESLint)                                                                                         |
+| `npm run format`    | Dateien mit Prettier formatieren                                                                      |
+| `npm test`          | Unit-Tests (Vitest)                                                                                   |
+| `npm run e2e`       | Klickpfade und Barrierefreiheit im Demo-Modus (Playwright, eigener Server, Port 4173 oder `E2E_PORT`) |
 
 Beim ersten Mal für `npm run e2e`: `npx playwright install chromium`.
 
