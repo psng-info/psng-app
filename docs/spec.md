@@ -92,5 +92,5 @@ Tab `Zugang` im Lecture-Sheet: E-Mail, Name, Rollen (kommagetrennt: kern, hr, ad
 2. Tab `Konfiguration` (Schritte, Rollen): Spalten mit Lennert abstimmen, bevor er angelegt wird.
 3. Talk-ID-Migration (Spalte `ID`, L001 ff.): eigene Aufgabe, Apps Script betroffen.
 4. Avatare: Initialen statt Fotos (öffentliches Repo). Fotos nur, wenn das Team zustimmt.
-5. Produktions-Domain (Vorschlag `orga.psng.info`).
+5. Produktions-Domain (Vorschlag `app.psng.info`).
 6. „Owner fehlt“ beim YouTube-Schritt (Schnitt/Upload) erscheint bei fast jedem Talk, weil dieser Schritt keinen Standard-Owner hat. Soll es einen geben (z. B. Medien-Team) oder soll der Hinweis bei diesem Schritt entfallen?
