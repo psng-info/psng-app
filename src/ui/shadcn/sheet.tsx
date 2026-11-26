@@ -36,6 +36,10 @@ function SheetContent({
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: 'top' | 'right' | 'bottom' | 'left';
 }) {
+  // Die Sheets werden per State geöffnet, nicht über einen Radix-Trigger. Damit der Fokus beim
+  // Schließen zurückkehrt, merken wir uns das Element, das beim Öffnen den Fokus hatte.
+  const opener = React.useRef<HTMLElement | null>(null);
+  const { onOpenAutoFocus, onCloseAutoFocus } = props;
   return (
     <SheetPrimitive.Portal>
       <SheetOverlay />
@@ -50,6 +54,20 @@ function SheetContent({
           className,
         )}
         {...props}
+        onOpenAutoFocus={(e) => {
+          opener.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          onOpenAutoFocus?.(e);
+        }}
+        onCloseAutoFocus={(e) => {
+          onCloseAutoFocus?.(e);
+          if (e.defaultPrevented) return;
+          const el = opener.current;
+          if (el?.isConnected) {
+            e.preventDefault();
+            el.focus();
+          }
+        }}
       >
         {children}
         <SheetPrimitive.Close className="absolute top-2 right-2 inline-flex size-11 items-center justify-center rounded-md hover:bg-secondary">
@@ -66,7 +84,17 @@ function SheetHeader({ className, ...props }: React.ComponentProps<'div'>) {
 }
 
 function SheetFooter({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div className={cn('mt-auto flex flex-col gap-2', className)} {...props} />;
+  // Klebt am unteren Rand des scrollenden Sheets, damit Speichern/Abbrechen immer erreichbar bleiben.
+  // Der negative Rand gleicht das Padding von SheetContent (Safe Area) aus.
+  return (
+    <div
+      className={cn(
+        'border-border bg-card sticky bottom-0 z-10 mt-auto -mb-[max(1rem,env(safe-area-inset-bottom))] -mx-4 flex flex-row-reverse gap-2 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] [&>*]:flex-1',
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 function SheetTitle({ className, ...props }: React.ComponentProps<typeof SheetPrimitive.Title>) {

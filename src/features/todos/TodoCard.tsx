@@ -2,6 +2,7 @@ import { Check, CircleAlert, ExternalLink, LoaderCircle, NotebookPen } from 'luc
 import { formatShort } from '@/domain/dates';
 import type { ConflictInfo, GroupKey, Todo } from '@/domain/todos';
 import { OwnerChip, Pill, type Tone } from '@/ui/blocks';
+import { OFFLINE_HINT, useOnline } from '@/data/online';
 import { Button } from '@/ui/shadcn/button';
 import { Checkbox } from '@/ui/shadcn/checkbox';
 import { cn } from '@/ui/lib/utils';
@@ -41,6 +42,7 @@ export function TodoCard({
   onComplete: (t: Todo) => void;
   onNote: (t: Todo) => void;
 }) {
+  const online = useOnline();
   const completed = t.status === 'erledigt' || pending;
   const due = dueLabel(t, today);
   const showBei = t.delegatedTo && t.delegatedTo !== t.waitingFor;
@@ -61,7 +63,8 @@ export function TodoCard({
         <span className="flex size-11 shrink-0 items-center justify-center">
           <Checkbox
             checked={completed}
-            disabled={t.isDone || pending}
+            disabled={t.isDone || pending || !online}
+            title={online ? undefined : OFFLINE_HINT}
             onCheckedChange={() => onComplete(t)}
             aria-label={`Als erledigt markieren: ${t.title}`}
             className="relative after:absolute after:-inset-3 after:content-['']"
@@ -80,8 +83,9 @@ export function TodoCard({
             variant="ghost"
             size="icon"
             onClick={() => onNote(t)}
+            disabled={!online}
             aria-label={`Notiz zu ${t.id} ergänzen`}
-            title="Notiz ergänzen"
+            title={online ? 'Notiz ergänzen' : OFFLINE_HINT}
           >
             <NotebookPen aria-hidden="true" />
           </Button>

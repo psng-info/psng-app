@@ -10,6 +10,8 @@ export interface AuthState {
   error: string | null;
   /** True im Demo-Modus: keine Google-Aufrufe, Abmelden nicht möglich. */
   isDemo: boolean;
+  /** True, wenn VITE_GOOGLE_CLIENT_ID fehlt: Anmeldung ist dann nicht möglich. */
+  setupMissing?: boolean;
   /** Lädt das Google-Skript vor, damit der Klick auf „Mit Google anmelden“ direkt den Popup öffnet. */
   preload: () => void;
   signIn: () => Promise<void>;

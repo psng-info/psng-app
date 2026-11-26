@@ -2,7 +2,7 @@ import { useId, type ReactNode } from 'react';
 import { cn } from '@/ui/lib/utils';
 
 const control =
-  'border-input bg-card text-foreground min-h-11 w-full min-w-0 rounded-md border px-3 py-2 text-base outline-none disabled:opacity-50 aria-[invalid=true]:border-crit';
+  'border-input bg-card text-foreground min-h-11 w-full min-w-0 rounded-md border px-3 py-2 text-base disabled:opacity-50 aria-[invalid=true]:border-crit';
 
 export interface FieldProps {
   label: string;

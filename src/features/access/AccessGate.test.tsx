@@ -54,6 +54,12 @@ describe('AccessGate', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
+  it('zeigt bei fehlender Client ID einen Einrichtungshinweis (Dev) und sperrt den Knopf', () => {
+    renderGate(auth({ setupMissing: true }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Einrichtung fehlt: Google Client ID');
+    expect(screen.getByRole('button', { name: 'Mit Google anmelden' })).toBeDisabled();
+  });
+
   it('zeigt Anmeldefehler auf Deutsch', () => {
     renderGate(auth({ error: 'Anmeldung abgebrochen.' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Anmeldung abgebrochen.');

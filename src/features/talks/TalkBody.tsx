@@ -1,6 +1,7 @@
 import { ExternalLink, ListTodo, LoaderCircle, Lock, Pencil, Play } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { SHEET_IDS } from '@/data/config';
+import { OFFLINE_HINT } from '@/data/online';
 import { stepId } from '@/data/repos/talks';
 import { useTodosData } from '@/data/repos/todos';
 import { formatShort, relDays } from '@/domain/dates';
@@ -108,7 +109,8 @@ function FlagList({ talk }: { talk: Talk }) {
               type="button"
               variant="outline"
               size="sm"
-              disabled={busy}
+              disabled={busy || actions.offline}
+              title={actions.offline ? OFFLINE_HINT : undefined}
               onClick={() => f.fix && actions.applyFix(talk, f.fix)}
             >
               {f.fix.label}
@@ -152,13 +154,14 @@ function StepRow({ talk, step, ctx }: { talk: Talk; step: StepState; ctx: Ctx })
   return (
     <li
       aria-busy={pending || undefined}
-      className="border-line grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-1 gap-y-0 border-t py-1 first:border-t-0 sm:grid-cols-[2.75rem_minmax(0,1fr)_auto]"
+      className="border-line grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-1 gap-y-0 border-t py-0.5 first:border-t-0 sm:grid-cols-[2.75rem_minmax(0,1fr)_auto]"
     >
-      <span className="flex size-11 items-center justify-center">
+      <span className="row-span-2 flex size-11 items-center justify-center self-start sm:row-span-1">
         {checkable ? (
           <Checkbox
             checked={pending}
-            disabled={pending}
+            disabled={pending || actions.offline}
+            title={actions.offline ? OFFLINE_HINT : undefined}
             onCheckedChange={() => actions.markDone(talk, step)}
             aria-label={`Als erledigt markieren: ${step.def.label}`}
             className="relative after:absolute after:-inset-3 after:content-['']"
@@ -171,7 +174,7 @@ function StepRow({ talk, step, ctx }: { talk: Talk; step: StepState; ctx: Ctx })
       </span>
       <div
         className={cn(
-          'min-w-0 py-2.5 text-sm',
+          'min-w-0 pt-2.5 pb-1 text-sm sm:pb-2.5',
           step.late
             ? 'text-crit'
             : step.status === 'done' || step.status === 'implied' || step.status === 'unk'
@@ -190,7 +193,7 @@ function StepRow({ talk, step, ctx }: { talk: Talk; step: StepState; ctx: Ctx })
         )}
       </div>
       {step.status !== 'implied' && (
-        <div className="col-start-2 flex flex-wrap items-center gap-x-2 gap-y-1 pb-1 sm:col-start-3 sm:justify-end sm:pb-0">
+        <div className="col-start-2 flex flex-wrap items-center gap-x-2 gap-y-0 sm:col-start-3 sm:justify-end">
           {due && step.due && (
             <span
               className={cn(
@@ -207,15 +210,17 @@ function StepRow({ talk, step, ctx }: { talk: Talk; step: StepState; ctx: Ctx })
             <button
               type="button"
               onClick={() => actions.editStep(talk, step)}
+              disabled={actions.offline}
+              title={actions.offline ? OFFLINE_HINT : undefined}
               aria-label={`${step.def.label} bearbeiten, Owner: ${step.owner || 'fehlt'}`}
-              className="hover:bg-accent-soft focus-visible:outline-accent -mx-1 inline-flex min-h-11 items-center gap-1.5 rounded-md px-1"
+              className="hover:bg-accent-soft focus-visible:outline-accent -mx-1 -my-2.5 inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 sm:my-0"
             >
               {step.owner ? (
                 <OwnerChip name={step.owner} member={ctx.isMember(step.owner)} />
               ) : (
                 <Pill tone="crit">Owner fehlt</Pill>
               )}
-              <Pencil aria-hidden="true" className="text-muted size-3.5" />
+              <Pencil aria-hidden="true" className="text-muted hidden size-3.5 sm:block" />
             </button>
           ) : step.owner ? (
             <OwnerChip name={step.owner} member={ctx.isMember(step.owner)} />
@@ -280,7 +285,8 @@ function Eckdaten({ talk, ctx }: { talk: Talk; ctx: Ctx }) {
             type="button"
             variant="outline"
             size="sm"
-            disabled={saving}
+            disabled={saving || actions.offline}
+            title={actions.offline ? OFFLINE_HINT : undefined}
             onClick={() => actions.editFacts(talk)}
           >
             <Pencil aria-hidden="true" />

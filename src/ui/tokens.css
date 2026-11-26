@@ -16,14 +16,15 @@
   --fg: #2c1f24;
   --muted: #6c6366;
   --line: #f0dfe5;
-  --accent: #c94a6e;
+  /* Markenton #c94a6e ist auf hellen Flächen unter 4,5:1. Text und Knöpfe nutzen die dunklere Stufe. */
+  --accent: #b8365d;
   --accent2: #dc776b;
   --accent-soft: #fbe8ee;
-  --warn: #a86512;
+  --warn: #8f5410;
   --warn-soft: #fbf0de;
   --crit: #b23a3a;
   --crit-soft: #f8e4e2;
-  --ok: #2e7d4f;
+  --ok: #276b43;
   --ok-soft: #e3f2e8;
   --glass: rgb(255 255 255 / 0.72);
   --on-accent: #fff;

@@ -7,6 +7,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Tests laufen immer mit Demo-Daten, egal was in .env.local steht.
+    env: { VITE_DATA: 'demo', VITE_GOOGLE_CLIENT_ID: '' },
     globals: true,
     setupFiles: ['src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],

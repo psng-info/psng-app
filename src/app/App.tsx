@@ -43,6 +43,13 @@ function Shell() {
 
   return (
     <div className="min-h-dvh pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+      <button
+        type="button"
+        onClick={() => document.getElementById('inhalt')?.focus()}
+        className="bg-surface text-fg sr-only z-50 rounded-md px-4 py-3 font-medium focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+      >
+        Zum Inhalt springen
+      </button>
       <header className="glass border-line sticky top-0 z-40 border-b pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-[1180px] items-center gap-3 px-4 py-2">
           <img src="/psng-logo.png" alt="" width={36} height={36} className="size-9" />
@@ -72,7 +79,7 @@ function Shell() {
         <TabLinks active={route.view} isHr={isHr} mobile />
       </nav>
 
-      <main className="mx-auto max-w-[1180px] px-4 py-6">
+      <main id="inhalt" tabIndex={-1} className="mx-auto max-w-[1180px] px-4 py-6 outline-none">
         {route.view === 'talks' && <TalksView param={route.param} />}
         {route.view === 'todos' &&
           (isHr ? <TodosWithHr param={route.param} /> : <TodosView param={route.param} />)}
