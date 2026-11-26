@@ -1,5 +1,6 @@
 import { ChevronDown, Pencil } from 'lucide-react';
 import { useId, type ReactNode } from 'react';
+import { OFFLINE_HINT, useOnline } from '@/data/online';
 import { formatDate, parseDate } from '@/domain/dates';
 import { formAnswers, progress, STEPS, type HrSet, type Person, type Step } from '@/domain/hr';
 import { cn } from '@/ui/lib/utils';
@@ -16,9 +17,17 @@ interface Props {
   onReview: (person: Person) => void;
 }
 
-function Fact({ label, children }: { label: string; children: ReactNode }) {
+function Fact({
+  label,
+  children,
+  wide = false,
+}: {
+  label: string;
+  children: ReactNode;
+  wide?: boolean;
+}) {
   return (
-    <div className="flex flex-col">
+    <div className={cn('flex flex-col', wide && 'col-span-2')}>
       <dt className="text-muted text-xs">{label}</dt>
       <dd className="text-sm break-words">{children}</dd>
     </div>
@@ -26,6 +35,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export function PersonCard({ person: p, today, onEdit, onStatus, onReview }: Props) {
+  const online = useOnline();
   const g = progress(p);
   const k = p.k;
   const where = [k['Stadt / Uni'], k['Status & Fach']].filter(Boolean).join(' · ');
@@ -70,9 +80,9 @@ export function PersonCard({ person: p, today, onEdit, onStatus, onReview }: Pro
 
       <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
         {k['Interesse / Bereich'] && (
-          <div className="col-span-2">
-            <Fact label="Interesse">{k['Interesse / Bereich']}</Fact>
-          </div>
+          <Fact wide label="Interesse">
+            {k['Interesse / Bereich']}
+          </Fact>
         )}
         {k['Zeit pro Woche'] && <Fact label="Zeit pro Woche">{k['Zeit pro Woche']}</Fact>}
         {!p.formOnly && <Fact label="Buddy">{k['Buddy'] || '–'}</Fact>}
@@ -93,14 +103,14 @@ export function PersonCard({ person: p, today, onEdit, onStatus, onReview }: Pro
               </Fact>
             )}
             {k['Probeaufgabe'] && (
-              <div className="col-span-2">
-                <Fact label="Probeaufgabe">{k['Probeaufgabe']}</Fact>
-              </div>
+              <Fact wide label="Probeaufgabe">
+                {k['Probeaufgabe']}
+              </Fact>
             )}
             {k['Review / Ergebnis'] && (
-              <div className="col-span-2">
-                <Fact label="Review">{k['Review / Ergebnis']}</Fact>
-              </div>
+              <Fact wide label="Review">
+                {k['Review / Ergebnis']}
+              </Fact>
             )}
           </>
         )}
@@ -166,7 +176,14 @@ export function PersonCard({ person: p, today, onEdit, onStatus, onReview }: Pro
       <footer className="mt-auto flex flex-wrap items-center gap-2">
         <ContactReveal person={p} />
         {p.editable && (
-          <Button type="button" variant="outline" size="sm" onClick={() => onStatus(p)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!online}
+            title={online ? undefined : OFFLINE_HINT}
+            onClick={() => onStatus(p)}
+          >
             <Pencil aria-hidden="true" />
             Status ändern
           </Button>

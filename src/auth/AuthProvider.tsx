@@ -36,9 +36,7 @@ function GoogleAuth({ children }: { children: ReactNode }) {
   const [session] = useState(() => (GOOGLE_CLIENT_ID ? new GoogleSession(GOOGLE_CLIENT_ID) : null));
   const [status, setStatus] = useState<AuthStatus>('signed_out');
   const [email, setEmail] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(
-    GOOGLE_CLIENT_ID ? null : 'Die Google Client ID fehlt (VITE_GOOGLE_CLIENT_ID). Siehe README.',
-  );
+  const [error, setError] = useState<string | null>(null);
 
   const preload = useCallback(() => {
     session?.prepare().catch(() => undefined);
@@ -76,7 +74,17 @@ function GoogleAuth({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<AuthState>(
-    () => ({ status, email, error, isDemo: false, preload, signIn, signOut, getToken }),
+    () => ({
+      status,
+      email,
+      error,
+      isDemo: false,
+      setupMissing: !GOOGLE_CLIENT_ID,
+      preload,
+      signIn,
+      signOut,
+      getToken,
+    }),
     [status, email, error, preload, signIn, signOut, getToken],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

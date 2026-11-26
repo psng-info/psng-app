@@ -88,8 +88,9 @@ Bereiche: `Kandidaten!A1:AA1000`, `Abbrüche!A1:AC1000`, `'Formularantworten 1'!
 Tab `Zugang` im Lecture-Sheet: E-Mail, Name, Rollen (kommagetrennt: kern, hr, admin). Vergleich der Login-E-Mail klein geschrieben. Namen dieser Liste sind die Teamnamen (Owner-Auswahl, Avatare/Initialen).
 
 ## Offene Fragen
-1. Mood-Meter übernehmen? (im Dashboard als „Spielerei“) Vorschlag: erst in PR 5, falls gewünscht.
-2. Spalten des Tabs `Konfiguration` (Schritte, Rollen) — mit Lennert abstimmen, bevor er angelegt wird.
-3. Talk-ID-Migration (Spalte `ID`, L001 ff.) — eigene Aufgabe, Apps Script betroffen.
+1. Mood-Meter im UI zeigen? (im Dashboard war es eine „Spielerei“; die Berechnung existiert in der Domain)
+2. Tab `Konfiguration` (Schritte, Rollen): Spalten mit Lennert abstimmen, bevor er angelegt wird.
+3. Talk-ID-Migration (Spalte `ID`, L001 ff.): eigene Aufgabe, Apps Script betroffen.
 4. Avatare: Initialen statt Fotos (öffentliches Repo). Fotos nur, wenn das Team zustimmt.
 5. Produktions-Domain (Vorschlag `orga.psng.info`).
+6. „Owner fehlt“ beim YouTube-Schritt (Schnitt/Upload) erscheint bei fast jedem Talk, weil dieser Schritt keinen Standard-Owner hat. Soll es einen geben (z. B. Medien-Team) oder soll der Hinweis bei diesem Schritt entfallen?

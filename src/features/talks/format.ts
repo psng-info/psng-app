@@ -75,9 +75,9 @@ export const STATUS_TEXT: Record<StepState['status'], string> = {
 /** Fälligkeit eines offenen Schritts in Worten, nie nur Farbe. */
 export function dueText(due: Date, today: Date): { text: string; tone: 'late' | 'soon' | 'plain' } {
   const n = daysFrom(due, today);
-  if (n < 0) return { text: `überfällig, ${-n} T. drüber`, tone: 'late' };
-  if (n === 0) return { text: 'bald fällig, heute', tone: 'soon' };
-  if (n <= 7) return { text: `bald fällig, in ${n} T.`, tone: 'soon' };
+  if (n < 0) return { text: `${-n} T. überfällig`, tone: 'late' };
+  if (n === 0) return { text: 'heute fällig', tone: 'soon' };
+  if (n <= 7) return { text: `in ${n} T. fällig`, tone: 'soon' };
   return { text: `in ${n} T.`, tone: 'plain' };
 }
 

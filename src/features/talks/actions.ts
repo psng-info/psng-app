@@ -11,6 +11,8 @@ export interface TalkActions {
   pendingSteps: ReadonlySet<string>;
   /** Talk-Schlüssel, deren Eckdaten gerade geschrieben werden. */
   pendingTalks: ReadonlySet<string>;
+  /** Kein Netz: Schreib-Aktionen sind deaktiviert. */
+  offline: boolean;
 }
 
 export const TalkActionsContext = createContext<TalkActions | null>(null);

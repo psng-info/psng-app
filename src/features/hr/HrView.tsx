@@ -149,6 +149,7 @@ export function HrView() {
           title="Kandidat:innen"
           updatedAt={query.dataUpdatedAt}
           fetching={query.isFetching}
+          failed={query.isError}
           onReload={() => void query.refetch()}
         />
         {query.data && (

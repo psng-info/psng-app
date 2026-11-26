@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ownerOptions } from './owners';
+import { initialOwner, OWNER_OTHER as OTHER, ownerOptions } from './owners';
 import { STEP_LOG_STATUS } from '@/domain/talks/write';
 import type { StepState, Talk } from '@/domain/talks/types';
 import { SelectField, TextArea, TextField } from '@/ui/blocks';
@@ -20,8 +20,6 @@ export interface StepEdit {
   owner: string;
   note: string;
 }
-
-const OTHER = '__other__';
 
 const STATUS_LABEL: Record<string, string> = {
   erledigt: 'erledigt',
@@ -69,14 +67,15 @@ function StepForm({
   team: string[];
   onSave: (talk: Talk, step: StepState, edit: StepEdit) => void;
 }) {
-  const options = ownerOptions(step.owner, team);
-  const [choice, setChoice] = useState(step.owner || '');
-  const [custom, setCustom] = useState('');
+  const options = ownerOptions(team);
+  const [start] = useState(() => initialOwner(step.owner, options));
+  const [choice, setChoice] = useState(start.choice);
+  const [custom, setCustom] = useState(start.custom);
   const [status, setStatus] = useState('');
   const [note, setNote] = useState('');
 
   const owner = (choice === OTHER ? custom : choice).trim();
-  const ownerChanged = owner !== '' && owner !== step.owner.trim();
+  const ownerChanged = owner !== '' && owner.toLowerCase() !== step.owner.trim().toLowerCase();
   const changed = ownerChanged || status !== '' || note.trim() !== '';
 
   return (
@@ -100,7 +99,7 @@ function StepForm({
         value={choice}
         onChange={setChoice}
         options={[
-          ...(step.owner ? [] : [{ value: '', label: 'Owner wählen' }]),
+          ...(choice ? [] : [{ value: '', label: 'Owner wählen' }]),
           ...options.map((o) => ({ value: o, label: o })),
           { value: OTHER, label: 'Anderer Name …' },
         ]}

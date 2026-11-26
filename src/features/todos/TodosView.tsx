@@ -37,6 +37,7 @@ import {
   Tile,
   type FilterChip,
 } from '@/ui/blocks';
+import { OFFLINE_HINT, useOnline } from '@/data/online';
 import { Button } from '@/ui/shadcn/button';
 import { GoalsSection } from './GoalsSection';
 import { NewTodoSheet } from './NewTodoSheet';
@@ -68,7 +69,8 @@ function errorText(err: unknown): string {
  * `conflict` kommt später vom HR-Feature (Widerspruch zwischen To-do und Kandidat:in).
  */
 export function TodosView({ conflict, param }: { conflict?: ConflictFn; param?: string }) {
-  const { todos, today, isPending, error, refetch, isFetching, dataUpdatedAt } = useTodos();
+  const { todos, today, isPending, error, refetch, isFetching, dataUpdatedAt, data } = useTodos();
+  const online = useOnline();
   const team = useTeam();
   const isMember = useMemo(() => memberMatcher(team), [team]);
   const tiles = useMemo(() => tilesFor(conflict), [conflict]);
@@ -172,9 +174,14 @@ export function TodosView({ conflict, param }: { conflict?: ConflictFn; param?: 
         title="To-dos"
         updatedAt={dataUpdatedAt}
         fetching={isFetching}
+        failed={!!error}
         onReload={() => void refetch()}
         actions={
-          <Button onClick={() => setCreating(true)}>
+          <Button
+            onClick={() => setCreating(true)}
+            disabled={!online}
+            title={online ? undefined : OFFLINE_HINT}
+          >
             <Plus aria-hidden="true" />
             Neues To-do
           </Button>
@@ -207,7 +214,7 @@ export function TodosView({ conflict, param }: { conflict?: ConflictFn; param?: 
           <Skeleton className="h-24" />
           <Skeleton className="h-40" />
         </div>
-      ) : error ? (
+      ) : error && !data ? (
         <ErrorBanner
           action={
             <Button variant="outline" onClick={() => void refetch()}>
@@ -219,6 +226,21 @@ export function TodosView({ conflict, param }: { conflict?: ConflictFn; param?: 
         </ErrorBanner>
       ) : (
         <>
+          {error && (
+            <ErrorBanner
+              action={
+                <Button variant="outline" onClick={() => void refetch()}>
+                  Erneut versuchen
+                </Button>
+              }
+            >
+              {errorText(error).replace(
+                'Speichern fehlgeschlagen.',
+                'Aktualisieren fehlgeschlagen.',
+              )}{' '}
+              Angezeigt wird der zuletzt gespeicherte Stand.
+            </ErrorBanner>
+          )}
           <Section title="Lage">
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-7">
               {tiles.map((t) => (

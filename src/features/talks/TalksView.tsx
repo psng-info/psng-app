@@ -8,6 +8,7 @@ import {
   useTalksData,
   useUpdateLecture,
 } from '@/data/repos/talks';
+import { useOnline } from '@/data/online';
 import { SheetsError } from '@/data/sheets/SheetsAdapter';
 import { navigate } from '@/app/router';
 import { parseDate, startOfDay } from '@/domain/dates';
@@ -81,6 +82,7 @@ export function TalksView({
   today?: Date;
 }) {
   const query = useTalksData();
+  const online = useOnline();
   const team = useTeam();
   const defaultToday = useMemo(() => startOfDay(new Date()), []);
   const today = todayProp ?? defaultToday;
@@ -169,8 +171,9 @@ export function TalksView({
       },
       pendingSteps: pending.steps,
       pendingTalks: pending.lectures,
+      offline: !online,
     }),
-    [logMutate, lectureMutate, user.name, pending.steps, pending.lectures],
+    [logMutate, lectureMutate, user.name, pending.steps, pending.lectures, online],
   );
   const stepSheet = useMemo(() => {
     const talk = model?.talks.find((t) => t.key === stepTarget?.talk);
@@ -227,6 +230,7 @@ export function TalksView({
           title="Talks"
           updatedAt={query.dataUpdatedAt}
           fetching={query.isFetching}
+          failed={query.isError}
           onReload={() => void query.refetch()}
         />
 
