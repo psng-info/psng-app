@@ -96,3 +96,11 @@ Wenn nach dem Deploy die Anmeldeseite „Anmeldung gerade nicht möglich.“ zei
 ## Alte Version bleibt hängen
 
 Nach einem Deploy lädt die App im Hintergrund die neue Version und wechselt beim nächsten Neuladen. Bleibt eine alte Version hängen: Tab schließen und neu öffnen, notfalls Websitedaten der Domain löschen (siehe „Cache löschen“).
+
+## KI: „Claude ist noch nicht eingerichtet.“ / „Tageslimit erreicht.“ / „Claude ist gerade nicht erreichbar.“
+Nur relevant, wenn `VITE_AI=on` ist.
+- **Nicht eingerichtet (503):** In Vercel fehlt `ANTHROPIC_API_KEY` oder `GOOGLE_CLIENT_ID`. Eintragen, neu deployen.
+- **Tageslimit (429):** Pro Person und warmer Instanz, `AI_DAILY_LIMIT` erhöhen oder am nächsten Tag nochmal.
+- **Nicht erreichbar (502) oder dauerhaft Fehler:** Ausgabenlimit in der Claude Console erreicht, Schlüssel abgelaufen oder Claude gestört. Console prüfen.
+- **„Bitte neu anmelden“ (401):** Google-Token abgelaufen, neu anmelden.
+- **Kein Zugang (403):** Person steht nicht im Tab `Zugang`. Für Notizen zu Personen braucht sie die Rolle `hr`.

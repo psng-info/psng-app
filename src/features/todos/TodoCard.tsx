@@ -2,6 +2,7 @@ import { Check, CircleAlert, ExternalLink, LoaderCircle, NotebookPen } from 'luc
 import { formatShort } from '@/domain/dates';
 import type { ConflictInfo, GroupKey, Todo } from '@/domain/todos';
 import { OwnerChip, Pill, type Tone } from '@/ui/blocks';
+import { QueueButton } from '@/features/ai/QueueButton';
 import { OFFLINE_HINT, useOnline } from '@/data/online';
 import { Button } from '@/ui/shadcn/button';
 import { Checkbox } from '@/ui/shadcn/checkbox';
@@ -78,6 +79,7 @@ export function TodoCard({
             </span>
           </p>
         </div>
+        {!t.isDone && <QueueButton kind="todos" id={t.id} label={`${t.id} ${t.title}`} />}
         {!t.isDone && (
           <Button
             variant="ghost"

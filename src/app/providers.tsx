@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { AuthProvider } from '@/auth/AuthProvider';
 import { AdapterProvider } from '@/data/AdapterContext';
 import { DATA_MODE } from '@/data/config';
+import { AiProvider } from '@/features/ai/AiContext';
 import { APP_VERSION, CACHE_MAX_AGE, createIdbPersister, shouldPersist } from '@/data/persist';
 
 /** Im Sheets-Modus hält der Lesecache (IndexedDB) To-dos, Talks und Zugangsliste bis zu 7 Tage vor. Im Demo-Modus gibt es keinen. */
@@ -26,7 +27,9 @@ export function Providers({ children }: { children: ReactNode }) {
 
   const inner = (
     <AuthProvider>
-      <AdapterProvider>{children}</AdapterProvider>
+      <AdapterProvider>
+        <AiProvider>{children}</AiProvider>
+      </AdapterProvider>
     </AuthProvider>
   );
 

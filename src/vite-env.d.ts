@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_DATA?: 'sheets' | 'demo';
   /** Öffentliche OAuth Client ID aus der Google Cloud Console. */
   readonly VITE_GOOGLE_CLIENT_ID?: string;
+  /** `on` schaltet v2 „Mit Claude verarbeiten“ ein (Standard: aus). */
+  readonly VITE_AI?: 'on' | 'off';
   /** Wird beim Build aus package.json gesetzt (Cache-Buster). */
   readonly VITE_APP_VERSION?: string;
 }

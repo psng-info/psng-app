@@ -54,6 +54,8 @@ export default defineConfig({
           '**/icons/apple-touch-icon.png',
         ],
         navigateFallback: 'index.html',
+        // Die Function unter /api ist nie Teil der App-Hülle.
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [],
       },
     }),

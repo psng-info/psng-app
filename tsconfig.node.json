@@ -5,7 +5,7 @@
     "lib": ["ES2023"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node"],
+    "types": ["node", "vitest/globals"],
     "noEmit": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
@@ -20,6 +20,7 @@
     "vitest.config.ts",
     "playwright.config.ts",
     "eslint.config.js",
-    "e2e"
+    "e2e",
+    "api"
   ]
 }

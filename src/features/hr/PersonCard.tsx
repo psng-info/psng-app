@@ -1,5 +1,6 @@
 import { ChevronDown, Pencil } from 'lucide-react';
 import { useId, type ReactNode } from 'react';
+import { QueueButton } from '@/features/ai/QueueButton';
 import { OFFLINE_HINT, useOnline } from '@/data/online';
 import { formatDate, parseDate } from '@/domain/dates';
 import { formAnswers, progress, STEPS, type HrSet, type Person, type Step } from '@/domain/hr';
@@ -60,6 +61,7 @@ export function PersonCard({ person: p, today, onEdit, onStatus, onReview }: Pro
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <StageBadge stage={p.stage} />
+          {p.editable && <QueueButton kind="people" id={p.key} label={p.name} />}
         </div>
       </header>
 

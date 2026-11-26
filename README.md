@@ -59,6 +59,17 @@ Die Client-ID ist öffentlich und darf ins Repo. Andere Geheimnisse gehören nic
 4. Nach Änderungen an Umgebungsvariablen neu deployen (Variablen werden beim Build eingebettet).
 5. Die Domain der Production in der Google Cloud Console bei den autorisierten JavaScript-Quellen ergänzen.
 
+## KI-Prototyp „Mit Claude verarbeiten“ (v2, aus)
+
+Standardmäßig ist er aus. Einschalten für eine Vorschau-Umgebung:
+
+1. **Claude Console** auf dem PSNG-Konto: API-Schlüssel anlegen und ein **Ausgabenlimit** setzen (z. B. 10 US-Dollar im Monat). Das ist die harte Kostengrenze.
+2. **Vercel**, Projekt Einstellungen › Environment Variables: `ANTHROPIC_API_KEY` (als **Sensitive**), `GOOGLE_CLIENT_ID` (dieselbe öffentliche ID wie `VITE_GOOGLE_CLIENT_ID`), optional `AI_DAILY_LIMIT` (Standard 20).
+3. **Vercel**: `VITE_AI=on` setzen und neu deployen.
+4. Lokal ohne Schlüssel testen: `VITE_AI=on npm run dev:demo` (Mock-Planer, kein Netzwerk).
+
+Details und Grenzen: `docs/decisions/0006-ki-function.md`. Der Schlüssel gehört nie ins Repo und nie in eine `.env`-Datei, die eingecheckt wird.
+
 ## Neue Person ins Team
 
 Drei Dinge, in dieser Reihenfolge:
