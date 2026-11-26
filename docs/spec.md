@@ -87,6 +87,14 @@ Bereiche: `Kandidaten!A1:AA1000`, `Abbrüche!A1:AC1000`, `'Formularantworten 1'!
 ## Zugang
 Tab `Zugang` im Lecture-Sheet: E-Mail, Name, Rollen (kommagetrennt: kern, hr, admin). Vergleich der Login-E-Mail klein geschrieben. Namen dieser Liste sind die Teamnamen (Owner-Auswahl, Avatare/Initialen).
 
+## Abgleich mit echten Daten (27.11.2026)
+Die Domain-Logik wurde gegen das alte Dashboard mit den echten Sheet-Werten (Stand 27.11.2026, heute fest auf 27.11.2026) verglichen: Talks (Liste, Schlüssel, Schritte, Flags, Handlungsbedarf, Kacheln, Lücken, Zahlen, Speaker-Pool, Mood), To-dos (Kacheln, Ziele, Owner, Sortierung, HR-Widerspruch, Mood) und HR (Stufen, Fortschritt, Flags, Gruppen, Reihenfolge, Mood). Ergebnis: keine fachliche Abweichung. Bewusste Unterschiede, die der Abgleich zeigt:
+- **To-do-Sortierung:** gleiche Priorität und Deadline sortiert die App nach ID numerisch (`T52` vor `T107`), die Referenz alphabetisch (`T107` vor `T52`). Die Referenz ist hier ein Fehler, die App bleibt dabei.
+- **Personen-Schlüssel (HR):** Abbrüche haben `a-…`, Kandidat:innen `p-…` (Referenz: beide `p-…`); Formular-Schlüssel mit Unterstrichen statt Leerzeichen. Nur intern, keine sichtbare Wirkung.
+- **Mood-Texte:** Punkte identisch, ein Text anders („12 To-dos in 7 Tagen erledigt“ statt „12 erledigt in 7 Tagen“); die App liefert zusätzlich Stufe und Ton.
+- **Lücken-Label:** App zeigt den Monat (z. B. „Februar 2027“) ohne internes Datum; Reihenfolge gleich.
+- Das echte Lectures-Sheet hat keine Spalten `Uhrzeit`, `Moderation`, `Event-Link`, `Luma`: die App liest per Kopfname und ergänzt leer, der Schritt „Moderation steht“ bleibt dann offen, bis ein Log-Eintrag ihn erledigt.
+
 ## Offene Fragen
 1. Mood-Meter im UI zeigen? (im Dashboard war es eine „Spielerei“; die Berechnung existiert in der Domain)
 2. Tab `Konfiguration` (Schritte, Rollen): Spalten mit Lennert abstimmen, bevor er angelegt wird.
