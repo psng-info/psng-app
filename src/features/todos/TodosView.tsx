@@ -35,6 +35,7 @@ import {
   Section,
   Skeleton,
   Tile,
+  TileGrid,
   type FilterChip,
 } from '@/ui/blocks';
 import { OFFLINE_HINT, useOnline } from '@/data/online';
@@ -211,8 +212,10 @@ export function TodosView({ conflict, param }: { conflict?: ConflictFn; param?: 
       {isPending ? (
         <div role="status" aria-busy="true" className="flex flex-col gap-3">
           <span className="sr-only">To-dos werden geladen</span>
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-40 rounded-2xl" />
           <Skeleton className="h-24" />
-          <Skeleton className="h-40" />
+          <Skeleton className="h-24" />
         </div>
       ) : error && !data ? (
         <ErrorBanner
@@ -242,7 +245,7 @@ export function TodosView({ conflict, param }: { conflict?: ConflictFn; param?: 
             </ErrorBanner>
           )}
           <Section title="Lage">
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-7">
+            <TileGrid className="md:grid-cols-4 lg:grid-cols-7">
               {tiles.map((t) => (
                 <Tile
                   key={t.key}
@@ -253,7 +256,7 @@ export function TodosView({ conflict, param }: { conflict?: ConflictFn; param?: 
                   onToggle={() => toggleTile(t.key)}
                 />
               ))}
-            </div>
+            </TileGrid>
           </Section>
           <GoalsSection goals={goals} period={period} today={today} />
 
@@ -309,7 +312,7 @@ export function TodosView({ conflict, param }: { conflict?: ConflictFn; param?: 
                 chips={chips}
                 onClearAll={() => setFilters(EMPTY_FILTERS)}
                 extra={
-                  <label className="mt-3 flex min-h-11 w-fit cursor-pointer items-center gap-3">
+                  <label className="flex min-h-11 w-fit cursor-pointer items-center gap-3">
                     <input
                       type="checkbox"
                       checked={filters.showDone}
@@ -322,50 +325,90 @@ export function TodosView({ conflict, param }: { conflict?: ConflictFn; param?: 
               />
 
               {shown.length === 0 ? (
-                <EmptyState>
+                <EmptyState
+                  action={
+                    todos.length ? (
+                      <Button variant="outline" onClick={() => setFilters(EMPTY_FILTERS)}>
+                        Filter zurücksetzen
+                      </Button>
+                    ) : undefined
+                  }
+                >
                   {todos.length
                     ? 'Keine Treffer für diesen Filter.'
-                    : 'Im Sheet steht noch kein To-do.'}
+                    : 'Im Sheet steht noch kein To-do. Leg das erste mit „Neues To-do“ an.'}
                 </EmptyState>
               ) : (
-                <div className="grid items-start gap-6 md:grid-cols-2">
-                  {buckets.map((b) => (
-                    <section
-                      key={b.key}
-                      aria-labelledby={`todos-col-${b.key}`}
-                      className="space-y-3"
-                    >
-                      <div>
-                        <h4 id={`todos-col-${b.key}`} className="font-display font-semibold">
-                          {b.label}{' '}
-                          <span className="text-muted font-mono text-sm">({b.todos.length})</span>
-                        </h4>
-                        {b.hint && <p className="text-muted text-sm">{b.hint}</p>}
-                      </div>
-                      {b.todos.length === 0 ? (
-                        <p className="text-muted text-sm">Nichts offen.</p>
-                      ) : (
-                        <ul className="space-y-3">
-                          {b.todos.map((t) => (
-                            <li key={t.id || t.row}>
-                              <TodoCard
-                                todo={t}
-                                today={today}
-                                group={group}
-                                pending={pending.has(t.id)}
-                                highlight={focusId === t.id}
-                                isMember={isMember}
-                                conflict={conflict && !t.isDone ? conflict(t) : null}
-                                onComplete={startComplete}
-                                onNote={setNoteFor}
-                              />
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </section>
-                  ))}
-                </div>
+                <>
+                  {buckets.length > 1 && (
+                    <nav aria-label="Gruppen der Liste" className="md:hidden">
+                      <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+                        {buckets.map((b) => (
+                          <li key={b.key} className="shrink-0">
+                            <a
+                              href={`#todos-col-${b.key}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                document
+                                  .getElementById(`todos-col-${b.key}`)
+                                  ?.scrollIntoView({ block: 'start' });
+                              }}
+                              className="border-line bg-surface inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-sm font-bold whitespace-nowrap"
+                            >
+                              {b.label}
+                              <span className="text-muted font-normal tabular-nums">
+                                {b.todos.length}
+                              </span>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </nav>
+                  )}
+                  <div className="grid items-start gap-x-6 gap-y-8 md:grid-cols-2">
+                    {buckets.map((b) => (
+                      <section
+                        key={b.key}
+                        aria-labelledby={`todos-col-${b.key}`}
+                        className="space-y-2"
+                      >
+                        <div className="flex flex-wrap items-baseline gap-x-2">
+                          <h4
+                            id={`todos-col-${b.key}`}
+                            className="font-display scroll-mt-20 font-semibold"
+                          >
+                            {b.label}{' '}
+                            <span className="text-muted text-sm font-normal tabular-nums">
+                              ({b.todos.length})
+                            </span>
+                          </h4>
+                          {b.hint && <p className="text-muted text-sm">{b.hint}</p>}
+                        </div>
+                        {b.todos.length === 0 ? (
+                          <p className="text-muted text-sm">Nichts offen.</p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {b.todos.map((t) => (
+                              <li key={t.id || t.row}>
+                                <TodoCard
+                                  todo={t}
+                                  today={today}
+                                  group={group}
+                                  pending={pending.has(t.id)}
+                                  highlight={focusId === t.id}
+                                  isMember={isMember}
+                                  conflict={conflict && !t.isDone ? conflict(t) : null}
+                                  onComplete={startComplete}
+                                  onNote={setNoteFor}
+                                />
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </section>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </Section>

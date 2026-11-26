@@ -41,7 +41,7 @@ export function StepSheet({
 }) {
   return (
     <Sheet open={target !== null} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="bottom" className="glass mx-auto w-full max-w-xl">
+      <SheetContent side="bottom">
         {target && (
           <StepForm
             key={`${target.talk.key}|${target.step.def.key}`}

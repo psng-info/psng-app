@@ -26,7 +26,7 @@ interface Props {
 export function StatusSheet({ person, mode, onClose, onStatus, onReview }: Props) {
   return (
     <Sheet open={person !== null} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="bottom" className="glass mx-auto max-w-lg">
+      <SheetContent side="bottom" className="max-w-lg">
         {person && mode === 'status' && (
           <>
             <SheetHeader>

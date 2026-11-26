@@ -1,4 +1,16 @@
-import { ExternalLink, ListTodo, LoaderCircle, Lock, Pencil, Play } from 'lucide-react';
+import {
+  Check,
+  Circle,
+  CircleHelp,
+  ExternalLink,
+  ListTodo,
+  LoaderCircle,
+  Lock,
+  Minus,
+  Pencil,
+  Play,
+  type LucideIcon,
+} from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { SHEET_IDS } from '@/data/config';
 import { OFFLINE_HINT } from '@/data/online';
@@ -9,7 +21,7 @@ import { col, type Row } from '@/domain/rows';
 import { cell, coord, hasYT, isHeld, isOff, onsite, tnOf } from '@/domain/talks/steps';
 import { PHASES, type StepState, type Talk, type TalkSpeaker } from '@/domain/talks/types';
 import { parseTodos, relatedTodos } from '@/domain/todos';
-import { LevelPill, OwnerChip, Pill, SegmentLegend, SubHeading } from '@/ui/blocks';
+import { LevelTag, OwnerChip, Pill, SegmentLegend, SubHeading } from '@/ui/blocks';
 import { Button } from '@/ui/shadcn/button';
 import { Checkbox } from '@/ui/shadcn/checkbox';
 import { cn } from '@/ui/lib/utils';
@@ -99,16 +111,20 @@ function FlagList({ talk }: { talk: Talk }) {
   if (!talk.flags.length) return null;
   const busy = actions?.pendingTalks.has(talk.key) ?? false;
   return (
-    <ul className="flex flex-col gap-2" aria-label="Hinweise">
+    <ul className="bg-bg flex flex-col gap-2 rounded-lg p-3" aria-label="Hinweise">
       {talk.flags.map((f, i) => (
-        <li key={i} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-          <LevelPill level={f.level}>{f.tag}</LevelPill>
-          <span className="min-w-0 flex-1 basis-56">{f.why}</span>
+        <li
+          key={i}
+          className="grid grid-cols-[6.75rem_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1.5 text-sm"
+        >
+          <LevelTag level={f.level}>{f.tag}</LevelTag>
+          <span className="min-w-0 leading-snug">{f.why}</span>
           {f.fix && actions && (
             <Button
               type="button"
               variant="outline"
               size="sm"
+              className="col-start-2 justify-self-start"
               disabled={busy || actions.offline}
               title={actions.offline ? OFFLINE_HINT : undefined}
               onClick={() => f.fix && actions.applyFix(talk, f.fix)}
@@ -124,12 +140,12 @@ function FlagList({ talk }: { talk: Talk }) {
 
 // --- Ablauf -------------------------------------------------------------
 
-const SYMBOL: Record<StepState['status'], { glyph: string; cls: string }> = {
-  done: { glyph: '✓', cls: 'text-accent font-bold' },
-  implied: { glyph: '✓', cls: 'text-muted' },
-  open: { glyph: '○', cls: 'text-fg' },
-  unk: { glyph: '?', cls: 'text-muted' },
-  na: { glyph: '–', cls: 'text-muted' },
+const SYMBOL: Record<StepState['status'], { icon: LucideIcon; cls: string }> = {
+  done: { icon: Check, cls: 'text-accent' },
+  implied: { icon: Check, cls: 'text-muted' },
+  open: { icon: Circle, cls: 'text-fg' },
+  unk: { icon: CircleHelp, cls: 'text-muted' },
+  na: { icon: Minus, cls: 'text-muted' },
 };
 
 function stepNote(s: StepState): string {
@@ -167,9 +183,11 @@ function StepRow({ talk, step, ctx }: { talk: Talk; step: StepState; ctx: Ctx })
             className="relative after:absolute after:-inset-3 after:content-['']"
           />
         ) : (
-          <span aria-hidden="true" className={cn('font-mono text-base leading-5', sym.cls)}>
-            {sym.glyph}
-          </span>
+          <sym.icon
+            aria-hidden="true"
+            strokeWidth={step.status === 'done' ? 2.75 : 2}
+            className={cn('size-4', sym.cls)}
+          />
         )}
       </span>
       <div
@@ -241,14 +259,22 @@ function Ablauf({ talk, ctx }: { talk: Talk; ctx: Ctx }) {
       <SubHeading className="mb-1">
         Ablauf · {p.done} von {p.total}
       </SubHeading>
-      <SegmentLegend />
+      <SegmentLegend
+        kinds={
+          p.segments.some((x) => x.kind === 'implied')
+            ? ['done', 'implied', 'late', 'soon', 'open', 'unk']
+            : ['done', 'late', 'soon', 'open', 'unk']
+        }
+      />
       <div className="mt-3 flex flex-col gap-4">
         {PHASES.map((name, i) => {
           const steps = talk.steps.filter((s) => s.def.phase === i && s.status !== 'na');
           if (!steps.length) return null;
           return (
             <div key={name}>
-              <p className="text-muted mb-0.5 text-xs font-bold tracking-wide uppercase">{name}</p>
+              <p className="text-muted border-line mb-0.5 border-b pb-1 text-xs font-bold">
+                {name}
+              </p>
               <ul>
                 {steps.map((s) => (
                   <StepRow key={s.def.key} talk={talk} step={s} ctx={ctx} />
@@ -372,7 +398,7 @@ function SpeakerBlock({ x }: { x: TalkSpeaker }) {
   const photo = col(f, 'Porträtfoto');
   const status = pick('Status');
   return (
-    <div className="border-line bg-bg flex flex-col gap-3 rounded-lg border p-3">
+    <div className="border-line flex flex-col gap-3 border-t pt-3 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-display font-semibold">
           {[pick('Akad. Titel'), x.name].filter(Boolean).join(' ')}
@@ -440,7 +466,7 @@ function SpeakerBlock({ x }: { x: TalkSpeaker }) {
           <button
             type="button"
             onClick={() => setShowContact(true)}
-            className="border-line hover:border-accent inline-flex min-h-11 items-center gap-2 self-start rounded-md border px-3 text-sm"
+            className="border-line bg-surface hover:border-accent inline-flex min-h-11 items-center gap-2 self-start rounded-md border px-3 text-sm"
           >
             <Lock aria-hidden="true" className="size-4" />
             Kontakt anzeigen (nur intern)
@@ -454,9 +480,11 @@ function SpeakerBlock({ x }: { x: TalkSpeaker }) {
 
 function Kpi({ value, label }: { value: string; label: string }) {
   return (
-    <div className="border-line bg-bg flex min-w-24 flex-col rounded-lg border px-3 py-1.5">
-      <b className="font-display text-xl font-semibold tabular-nums">{value || '–'}</b>
-      <span className="text-muted text-xs">{label}</span>
+    <div className="flex min-w-20 flex-col-reverse">
+      <dt className="text-muted text-xs">{label}</dt>
+      <dd className="font-display text-xl leading-tight font-semibold tabular-nums">
+        {value || '–'}
+      </dd>
     </div>
   );
 }
@@ -469,12 +497,12 @@ function AfterTalk({ talk }: { talk: Talk }) {
   return (
     <div className="border-line flex flex-col gap-3 border-t pt-4">
       <SubHeading className="mb-0">Nach dem Talk</SubHeading>
-      <div className="flex flex-wrap gap-2">
+      <dl className="flex flex-wrap gap-x-6 gap-y-3">
         <Kpi value={cell(r, 'TN vor Ort')} label="TN vor Ort" />
         <Kpi value={cell(r, 'TN online')} label="TN online" />
         <Kpi value={tn ? String(tn) : ''} label="TN gesamt" />
         <Kpi value={cell(r, 'Views nach 4 Wo.')} label="Views nach 4 Wo." />
-      </div>
+      </dl>
       {hasYT(talk) ? (
         <ExtLink href={cell(r, 'YouTube-Link')} className="self-start font-bold">
           <Play aria-hidden="true" className="size-3.5" />
@@ -498,7 +526,7 @@ function AfterTalk({ talk }: { talk: Talk }) {
         const by = cell(p, 'Ausgefüllt von');
         const stamp = cell(p, 'Zeitstempel').slice(0, 10);
         return (
-          <details key={p._row} className="border-line bg-bg rounded-lg border">
+          <details key={p._row} className="border-line rounded-lg border">
             <summary className="flex min-h-11 cursor-pointer items-center px-3 text-sm font-medium">
               Talk-Bericht{by ? ` von ${by}` : ''}
               {stamp ? ` · ${stamp}` : ''}

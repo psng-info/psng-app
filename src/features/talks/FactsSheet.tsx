@@ -97,7 +97,7 @@ export function FactsSheet({
 }) {
   return (
     <Sheet open={talk !== null} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="bottom" className="glass mx-auto w-full max-w-xl overflow-y-auto">
+      <SheetContent side="bottom" className="overflow-y-auto">
         {talk && <FactsForm key={talk.key} talk={talk} onSave={onSave} />}
       </SheetContent>
     </Sheet>

@@ -1,6 +1,6 @@
 import { formatShort } from '@/domain/dates';
 import type { Goal, GoalPeriod } from '@/domain/todos';
-import { EmptyState, ProgressSegments, Section, type SegmentKind } from '@/ui/blocks';
+import { EmptyState, LevelTag, ProgressSegments, Section, type SegmentKind } from '@/ui/blocks';
 
 /** Ein Segment je To-do des Ziels: erledigt, überfällig, offen. */
 function segmentsOf(g: Goal): { kind: SegmentKind }[] {
@@ -35,35 +35,33 @@ export function GoalsSection({
       {goals.length === 0 ? (
         <EmptyState>Keine Ziele im Sheet (Zeilen mit Ebene Ziel).</EmptyState>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="border-line bg-surface grid gap-px overflow-hidden rounded-2xl border sm:grid-cols-2 lg:grid-cols-3 [&>*]:shadow-[1px_0_0_var(--line),0_1px_0_var(--line)]">
           {goals.map((g) => (
-            <li key={g.name} className="bg-surface border-line rounded-lg border p-3">
-              <p className="text-muted text-xs font-bold">{g.name}</p>
-              <p className="mt-1 font-medium">{g.title}</p>
-              <div className="mt-3">
-                <ProgressSegments
-                  segments={segmentsOf(g)}
-                  label={`${g.name}: ${g.done} von ${g.total} erledigt`}
-                />
-              </div>
-              <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">
-                <span className="font-mono">
-                  {g.done}/{g.total} erledigt
-                </span>
-                {g.open > 0 && <span>{g.open} offen</span>}
-                {g.late > 0 && <span className="text-crit font-medium">{g.late} überfällig</span>}
-              </p>
-              {(g.owner || g.deadline) && (
-                <p className="text-muted mt-1 flex flex-wrap gap-x-3 text-sm">
-                  {g.owner && <span>Owner: {g.owner}</span>}
-                  {g.deadline && (
-                    <span className="font-mono">bis {formatShort(g.deadline, today)}</span>
-                  )}
+            <li key={g.name} className="flex flex-col gap-2 p-3 sm:p-4">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="font-display min-w-0 font-semibold break-words">{g.name}</p>
+                <p className="text-muted shrink-0 text-sm tabular-nums">
+                  <b className="text-fg">{g.done}</b>/{g.total}
                 </p>
-              )}
+              </div>
+              <p className="text-muted -mt-1 text-sm leading-snug break-words">{g.title}</p>
+              <ProgressSegments
+                segments={segmentsOf(g)}
+                label={`${g.name}: ${g.done} von ${g.total} erledigt`}
+              />
+              <p className="text-muted flex flex-wrap gap-x-2 text-xs">
+                <span>{g.open > 0 ? `${g.open} offen` : 'alles erledigt'}</span>
+                {g.late > 0 && (
+                  <LevelTag level="crit" className="text-xs">
+                    {g.late} überfällig
+                  </LevelTag>
+                )}
+                {g.owner && <span>· {g.owner}</span>}
+                {g.deadline && <span>· bis {formatShort(g.deadline, today)}</span>}
+              </p>
               {g.nextStep && (
-                <p className="mt-2 text-sm">
-                  <span className="text-muted">Nächster Schritt: </span>
+                <p className="text-sm leading-snug">
+                  <span className="text-muted">Als Nächstes: </span>
                   {g.nextStep}
                 </p>
               )}

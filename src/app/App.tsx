@@ -1,4 +1,4 @@
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { ListChecks, Monitor, Moon, Presentation, Sun, Users, type LucideIcon } from 'lucide-react';
 import { useMemo } from 'react';
 import { useHrData } from '@/data/repos/hr';
 import { buildPeople, hrConflict } from '@/domain/hr';
@@ -13,10 +13,10 @@ import { cn } from '@/ui/lib/utils';
 import { navigate, useHashRoute, type View } from './router';
 import { useTheme, type Theme } from './theme';
 
-const TABS: { view: View; label: string; hrOnly?: boolean }[] = [
-  { view: 'talks', label: 'Talks' },
-  { view: 'todos', label: 'To-dos' },
-  { view: 'kandidaten', label: 'Kandidat:innen', hrOnly: true },
+const TABS: { view: View; label: string; icon: LucideIcon; hrOnly?: boolean }[] = [
+  { view: 'talks', label: 'Talks', icon: Presentation },
+  { view: 'todos', label: 'To-dos', icon: ListChecks },
+  { view: 'kandidaten', label: 'Kandidat:innen', icon: Users, hrOnly: true },
 ];
 
 const THEME_NEXT: Record<Theme, Theme> = { system: 'light', light: 'dark', dark: 'system' };
@@ -42,7 +42,7 @@ function Shell() {
   const ThemeIcon = THEME_ICON[theme];
 
   return (
-    <div className="min-h-dvh pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+    <div className="min-h-dvh pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
       <button
         type="button"
         onClick={() => document.getElementById('inhalt')?.focus()}
@@ -51,9 +51,13 @@ function Shell() {
         Zum Inhalt springen
       </button>
       <header className="glass border-line sticky top-0 z-40 border-b pt-[env(safe-area-inset-top)]">
-        <div className="mx-auto flex max-w-[1180px] items-center gap-3 px-4 py-2">
-          <img src="/psng-logo.png" alt="" width={36} height={36} className="size-9" />
-          <h1 className="font-display text-lg font-semibold">PSNG Orga</h1>
+        <div className="mx-auto flex max-w-[1180px] items-center gap-2.5 px-4 py-1.5">
+          <span className="border-line bg-surface inline-flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border">
+            <img src="/psng-logo.png" alt="" width={32} height={32} className="size-8" />
+          </span>
+          <h1 className="font-display text-base font-semibold tracking-tight">
+            PSNG <span className="text-accent">Orga</span>
+          </h1>
 
           <nav aria-label="Hauptnavigation" className="ml-6 hidden gap-1 md:flex">
             <TabLinks active={route.view} isHr={isHr} />
@@ -64,7 +68,7 @@ function Shell() {
             onClick={() => setTheme(THEME_NEXT[theme])}
             aria-label={`${THEME_LABEL[theme]}. Wechseln`}
             title={THEME_LABEL[theme]}
-            className="hover:bg-accent-soft ml-auto inline-flex size-11 items-center justify-center rounded-md"
+            className="hover:bg-accent-soft text-muted hover:text-fg ml-auto inline-flex size-11 items-center justify-center rounded-md"
           >
             <ThemeIcon className="size-5" aria-hidden="true" />
           </button>
@@ -79,7 +83,11 @@ function Shell() {
         <TabLinks active={route.view} isHr={isHr} mobile />
       </nav>
 
-      <main id="inhalt" tabIndex={-1} className="mx-auto max-w-[1180px] px-4 py-6 outline-none">
+      <main
+        id="inhalt"
+        tabIndex={-1}
+        className="mx-auto max-w-[1180px] px-4 pt-5 pb-10 outline-none md:pt-8"
+      >
         {route.view === 'talks' && <TalksView param={route.param} />}
         {route.view === 'todos' &&
           (isHr ? <TodosWithHr param={route.param} /> : <TodosView param={route.param} />)}
@@ -134,24 +142,41 @@ function TabLinks({
 }) {
   return (
     <>
-      {TABS.filter((t) => isHr || !t.hrOnly).map((tab) => (
-        <a
-          key={tab.view}
-          href={`#/${tab.view}`}
-          onClick={(e) => {
-            e.preventDefault();
-            navigate(tab.view);
-          }}
-          aria-current={active === tab.view ? 'page' : undefined}
-          className={cn(
-            'inline-flex min-h-11 items-center justify-center rounded-md px-4 text-sm font-medium',
-            mobile && 'flex-1 rounded-none py-3',
-            active === tab.view ? 'text-accent bg-accent-soft font-bold' : 'text-muted',
-          )}
-        >
-          {tab.label}
-        </a>
-      ))}
+      {TABS.filter((t) => isHr || !t.hrOnly).map((tab) => {
+        const current = active === tab.view;
+        const Icon = tab.icon;
+        return (
+          <a
+            key={tab.view}
+            href={`#/${tab.view}`}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate(tab.view);
+            }}
+            aria-current={current ? 'page' : undefined}
+            className={cn(
+              mobile
+                ? 'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 pt-1.5 pb-1 text-xs'
+                : 'inline-flex min-h-11 items-center justify-center rounded-full px-4 text-sm',
+              current ? 'text-accent font-bold' : 'text-muted hover:text-fg font-medium',
+              !mobile && current && 'bg-accent-soft',
+            )}
+          >
+            {mobile && (
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'inline-flex h-7 w-12 items-center justify-center rounded-full transition-colors',
+                  current && 'bg-accent-soft',
+                )}
+              >
+                <Icon className="size-5" strokeWidth={current ? 2.25 : 1.75} />
+              </span>
+            )}
+            {tab.label}
+          </a>
+        );
+      })}
     </>
   );
 }

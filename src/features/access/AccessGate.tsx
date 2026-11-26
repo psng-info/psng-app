@@ -94,9 +94,11 @@ function Message({
         aria-labelledby="gate-title"
         aria-busy={busy}
         role={busy ? 'status' : undefined}
-        className="bg-surface border-line w-full max-w-sm rounded-lg border p-6 text-center shadow-sm"
+        className="bg-surface border-line w-full max-w-sm rounded-2xl border px-6 pt-8 pb-6 text-center shadow-[0_12px_32px_-16px_var(--glow)]"
       >
-        <img src="/psng-logo.png" alt="" width={56} height={56} className="mx-auto size-14" />
+        <span className="border-line bg-surface mx-auto flex size-16 items-center justify-center overflow-hidden rounded-full border">
+          <img src="/psng-logo.png" alt="" width={56} height={56} className="size-14" />
+        </span>
         <h1 id="gate-title" className="font-display mt-4 text-xl font-semibold">
           {title}
         </h1>

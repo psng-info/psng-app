@@ -1,4 +1,4 @@
-import { ChevronDown, Pencil } from 'lucide-react';
+import { Check, ChevronDown, Circle, Pencil } from 'lucide-react';
 import { useId, type ReactNode } from 'react';
 import { OFFLINE_HINT, useOnline } from '@/data/online';
 import { formatDate, parseDate } from '@/domain/dates';
@@ -46,7 +46,7 @@ export function PersonCard({ person: p, today, onEdit, onStatus, onReview }: Pro
   return (
     <article
       aria-labelledby={`hr-${p.key}`}
-      className="border-line bg-surface flex flex-col gap-3 rounded-lg border p-4"
+      className="border-line bg-surface flex w-full flex-col gap-3 rounded-xl border p-3.5 sm:p-4"
     >
       <header className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
@@ -117,7 +117,7 @@ export function PersonCard({ person: p, today, onEdit, onStatus, onReview }: Pro
       </dl>
 
       {(noteText || k['Kommentar']) && (
-        <div className="bg-bg rounded-md p-3">
+        <div className="bg-bg rounded-lg px-3 py-2.5">
           <p className="text-muted text-xs">
             {noteText
               ? `Letzte Notiz${note?.['Datum'] ? ` · ${note['Datum']}` : ''}${note?.['Von'] ? ` · ${note['Von']}` : ''}`
@@ -130,8 +130,8 @@ export function PersonCard({ person: p, today, onEdit, onStatus, onReview }: Pro
       )}
 
       {p.editable && (
-        <details className="group">
-          <summary className="hover:bg-accent-soft -mx-2 flex min-h-11 cursor-pointer items-center rounded-md px-2 text-sm font-medium">
+        <details className="group border-line -mx-3.5 border-t px-3.5 sm:-mx-4 sm:px-4">
+          <summary className="no-marker hover:text-accent flex min-h-11 cursor-pointer items-center text-sm font-bold">
             Checkliste
             <ChevronDown
               className="ml-auto size-4 transition-transform group-open:rotate-180"
@@ -155,8 +155,8 @@ export function PersonCard({ person: p, today, onEdit, onStatus, onReview }: Pro
       )}
 
       {answers.length > 0 && (
-        <details className="group">
-          <summary className="hover:bg-accent-soft -mx-2 flex min-h-11 cursor-pointer items-center rounded-md px-2 text-sm font-medium">
+        <details className="group border-line -mx-3.5 border-t px-3.5 sm:-mx-4 sm:px-4">
+          <summary className="no-marker hover:text-accent flex min-h-11 cursor-pointer items-center text-sm font-bold">
             Formularantworten
             <ChevronDown
               className="ml-auto size-4 transition-transform group-open:rotate-180"
@@ -173,7 +173,7 @@ export function PersonCard({ person: p, today, onEdit, onStatus, onReview }: Pro
         </details>
       )}
 
-      <footer className="mt-auto flex flex-wrap items-center gap-2">
+      <footer className="border-line -mx-3.5 mt-auto flex flex-wrap items-center gap-2 border-t px-3.5 pt-3 sm:-mx-4 sm:px-4">
         <ContactReveal person={p} />
         {p.editable && (
           <Button
@@ -216,8 +216,12 @@ function StepRow({
 
   if (step.kind === 'auto') {
     control = (
-      <span className="inline-flex size-11 items-center justify-center text-sm" aria-hidden="true">
-        {done ? '✓' : '○'}
+      <span className="inline-flex size-11 items-center justify-center" aria-hidden="true">
+        {done ? (
+          <Check className="text-accent size-4" strokeWidth={2.75} />
+        ) : (
+          <Circle className="text-muted size-4" />
+        )}
       </span>
     );
     hint = done ? 'automatisch erkannt' : 'automatisch';

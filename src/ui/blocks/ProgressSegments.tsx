@@ -1,11 +1,15 @@
 import { cn } from '@/ui/lib/utils';
 import { SEGMENT_LABEL, type SegmentKind } from './segments';
 
+/**
+ * Gefüllt heißt erledigt, umrandet heißt offen. Die Randfarbe zeigt die Dringlichkeit.
+ * So bleibt Überfällig (Rot) auch neben Erledigt (Himbeer) unterscheidbar.
+ */
 const SEGMENT_STYLE: Record<SegmentKind, string> = {
   done: 'bg-accent',
-  implied: 'bg-accent/35',
-  late: 'bg-crit',
-  soon: 'bg-warn',
+  implied: 'bg-accent/30',
+  late: 'border-[1.5px] border-crit bg-crit-soft',
+  soon: 'border-[1.5px] border-warn bg-warn-soft',
   open: 'border border-line bg-surface',
   unk: 'bg-[repeating-linear-gradient(45deg,var(--line)_0_2px,transparent_2px_4px)] border border-line',
 };
@@ -21,12 +25,12 @@ export function ProgressSegments({
   className?: string;
 }) {
   return (
-    <span role="img" aria-label={label} className={cn('flex w-full min-w-24 gap-0.5', className)}>
+    <span role="img" aria-label={label} className={cn('flex w-full min-w-24 gap-[3px]', className)}>
       {segments.map((s, i) => (
         <i
           key={i}
           title={s.title}
-          className={cn('block h-2 flex-1 rounded-[3px]', SEGMENT_STYLE[s.kind])}
+          className={cn('block h-2 max-w-8 flex-1 rounded-full', SEGMENT_STYLE[s.kind])}
         />
       ))}
     </span>
@@ -40,7 +44,7 @@ export function SegmentLegend({ kinds }: { kinds?: SegmentKind[] }) {
     <ul className="text-muted flex flex-wrap gap-x-3 gap-y-1 text-xs" aria-label="Legende">
       {list.map((k) => (
         <li key={k} className="inline-flex items-center gap-1.5">
-          <i className={cn('block h-2 w-4 rounded-[3px]', SEGMENT_STYLE[k])} aria-hidden="true" />
+          <i className={cn('block h-2 w-4 rounded-full', SEGMENT_STYLE[k])} aria-hidden="true" />
           {SEGMENT_LABEL[k]}
         </li>
       ))}

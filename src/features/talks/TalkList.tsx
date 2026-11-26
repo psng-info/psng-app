@@ -18,6 +18,7 @@ import {
   type When,
 } from './filters';
 import { TalkCard } from './TalkCard';
+import { TalkTiles } from './Lage';
 import type { TalkCtx } from './TalkBody';
 
 export function TalkList({
@@ -66,9 +67,9 @@ export function TalkList({
     list.length > 0 && (
       <div key={title}>
         <SubHeading>
-          {title} ({list.length})
+          {title} <span className="text-muted font-normal tabular-nums">({list.length})</span>
         </SubHeading>
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-2">
           {list.map((t) => (
             <li key={t.key + t.row}>
               <TalkCard talk={t} open={isOpen(t.key)} onToggle={onToggle} ctx={ctx} />
@@ -80,52 +81,59 @@ export function TalkList({
 
   return (
     <Section id="talks-liste" title="Talks" count={count}>
-      <FilterBar
-        search={{
-          label: 'Suche',
-          placeholder: 'Titel, Speaker, Ort …',
-          value: filters.q,
-          onChange: (q) => set({ q }),
-        }}
-        selects={[
-          {
-            id: 'when',
-            label: 'Zeitraum',
-            value: filters.when,
-            onChange: (v) => set({ when: v as When }),
-            options: [
-              { value: '', label: 'alle' },
-              { value: 'up', label: 'anstehend', count: whenCounts('up') },
-              { value: 'past', label: 'vergangen', count: whenCounts('past') },
-              { value: 'nodate', label: 'ohne Termin', count: whenCounts('nodate') },
-            ],
-          },
-          {
-            id: 'series',
-            label: 'Reihe',
-            value: filters.series,
-            onChange: (series) => set({ series }),
-            options: [{ value: '', label: 'alle' }, ...withCounts((t) => [cell(t.raw, 'Reihe')])],
-          },
-          {
-            id: 'status',
-            label: 'Status',
-            value: filters.status,
-            onChange: (status) => set({ status }),
-            options: [{ value: '', label: 'alle' }, ...withCounts((t) => [t.status])],
-          },
-          {
-            id: 'owner',
-            label: 'Owner',
-            value: filters.owner,
-            onChange: (owner) => set({ owner }),
-            options: [{ value: '', label: 'alle' }, ...withCounts(ownersOf)],
-          },
-        ]}
-        chips={chips}
-        onClearAll={() => onFilters(NO_FILTERS)}
-      />
-      <div className="mt-4 flex flex-col gap-6" aria-live="polite">
+      <div className="flex flex-col gap-3">
+        <TalkTiles
+          talks={talks}
+          active={filters.tile}
+          onToggle={(k) => set({ tile: filters.tile === k ? '' : k })}
+        />
+        <FilterBar
+          search={{
+            label: 'Suche',
+            placeholder: 'Titel, Speaker, Ort …',
+            value: filters.q,
+            onChange: (q) => set({ q }),
+          }}
+          selects={[
+            {
+              id: 'when',
+              label: 'Zeitraum',
+              value: filters.when,
+              onChange: (v) => set({ when: v as When }),
+              options: [
+                { value: '', label: 'alle' },
+                { value: 'up', label: 'anstehend', count: whenCounts('up') },
+                { value: 'past', label: 'vergangen', count: whenCounts('past') },
+                { value: 'nodate', label: 'ohne Termin', count: whenCounts('nodate') },
+              ],
+            },
+            {
+              id: 'series',
+              label: 'Reihe',
+              value: filters.series,
+              onChange: (series) => set({ series }),
+              options: [{ value: '', label: 'alle' }, ...withCounts((t) => [cell(t.raw, 'Reihe')])],
+            },
+            {
+              id: 'status',
+              label: 'Status',
+              value: filters.status,
+              onChange: (status) => set({ status }),
+              options: [{ value: '', label: 'alle' }, ...withCounts((t) => [t.status])],
+            },
+            {
+              id: 'owner',
+              label: 'Owner',
+              value: filters.owner,
+              onChange: (owner) => set({ owner }),
+              options: [{ value: '', label: 'alle' }, ...withCounts(ownersOf)],
+            },
+          ]}
+          chips={chips}
+          onClearAll={() => onFilters(NO_FILTERS)}
+        />
+      </div>
+      <div className="mt-5 flex flex-col gap-6" aria-live="polite">
         {shown.length === 0 ? (
           <EmptyState
             action={

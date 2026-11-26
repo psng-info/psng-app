@@ -1,18 +1,21 @@
-import { CalendarDays, Clock, Eye, MapPin, Users } from 'lucide-react';
-import { formatShort } from '@/domain/dates';
+import { CalendarPlus } from 'lucide-react';
 import { TALK_TILES } from '@/domain/talks/model';
 import { cell } from '@/domain/talks/steps';
 import type { Talk } from '@/domain/talks/types';
-import { EmptyState, Pill, ProgressSegments, StatTile, Tile } from '@/ui/blocks';
+import { EmptyState, LevelTag, ProgressSegments, Tile, TileGrid } from '@/ui/blocks';
 import { Button } from '@/ui/shadcn/button';
-import { fmtNumber, progressOf } from './format';
-import type { TalkStats } from '@/domain/talks/model';
+import { DateRail } from './DateRail';
+import { progressOf } from './format';
 
 function countdown(dd: number | null): string {
   if (dd === null) return '';
   return dd === 0 ? 'heute' : dd === 1 ? 'morgen' : `in ${dd} Tagen`;
 }
 
+/**
+ * Der nächste Talk: Datumsmarke, Titel, Speaker, Eckdaten, Fortschritt.
+ * Einzige Fläche mit Leuchten (wie der nächste Termin auf psng.info).
+ */
 export function NextTalkHero({
   talk,
   today,
@@ -22,70 +25,58 @@ export function NextTalkHero({
   today: Date;
   onOpen: (key: string) => void;
 }) {
-  if (!talk) return <EmptyState>Kein Talk mit Termin geplant.</EmptyState>;
+  if (!talk)
+    return (
+      <EmptyState icon={<CalendarPlus className="size-5" />}>
+        Kein Talk mit Termin geplant. Neue Termine kommen aus dem Tab Lectures.
+      </EmptyState>
+    );
   const p = progressOf(talk);
-  const facts = [cell(talk.raw, 'Reihe'), cell(talk.raw, 'Format'), cell(talk.raw, 'Ort')].filter(
-    Boolean,
-  );
+  const facts = [
+    cell(talk.raw, 'Uhrzeit'),
+    cell(talk.raw, 'Reihe'),
+    cell(talk.raw, 'Format'),
+    cell(talk.raw, 'Ort'),
+  ].filter(Boolean);
   return (
     <article
       aria-label="Nächster Talk"
-      className="border-line bg-surface border-l-accent flex h-full flex-col gap-4 rounded-xl border border-l-4 p-4 sm:p-5"
+      className="border-line bg-surface flex flex-col gap-4 rounded-2xl border p-4 shadow-[0_8px_24px_-12px_var(--glow)] sm:p-5"
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h4 className="text-muted text-sm font-bold tracking-wide uppercase">Nächster Talk</h4>
-        <p className="font-display text-accent text-3xl leading-none font-semibold sm:text-4xl">
-          {countdown(talk.dd)}
-        </p>
-      </div>
-      <div className="min-w-0">
-        <p className="font-display text-xl leading-snug font-semibold break-words sm:text-2xl">
-          {talk.title}
-        </p>
-        <p className="text-muted mt-1 flex items-center gap-1.5 text-sm">
-          <Users aria-hidden="true" className="size-4 shrink-0" />
-          {talk.names.join(', ')}
-        </p>
-      </div>
-      <ul className="text-muted flex flex-wrap gap-x-4 gap-y-1 text-sm">
-        {talk.date && (
-          <li className="flex items-center gap-1.5">
-            <CalendarDays aria-hidden="true" className="size-4" />
-            <span className="font-mono text-[0.8125rem]">{formatShort(talk.date, today)}</span>
-          </li>
-        )}
-        {cell(talk.raw, 'Uhrzeit') && (
-          <li className="flex items-center gap-1.5">
-            <Clock aria-hidden="true" className="size-4" />
-            <span className="font-mono text-[0.8125rem]">{cell(talk.raw, 'Uhrzeit')}</span>
-          </li>
-        )}
-        {facts.length > 0 && (
-          <li className="flex items-center gap-1.5">
-            <MapPin aria-hidden="true" className="size-4" />
-            {facts.join(' · ')}
-          </li>
-        )}
-      </ul>
-      <div className="mt-auto flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <ProgressSegments segments={p.segments} label={p.label} />
-          <p className="text-muted flex flex-wrap items-center gap-2 text-sm">
-            <span>
-              {p.done} von {p.total} Schritten
-            </span>
-            {p.late > 0 && <Pill tone="crit">{p.late} überfällig</Pill>}
+      <div className="flex gap-4">
+        <DateRail date={talk.date} today={today} upcoming large />
+        <div className="border-line min-w-0 flex-1 border-l pl-4">
+          <p className="font-display text-xl leading-snug font-semibold break-words sm:text-[1.375rem]">
+            {talk.title}
+          </p>
+          <p className="text-muted mt-1 text-sm break-words">{talk.names.join(', ')}</p>
+          <p className="text-muted mt-2 text-sm">
+            <span className="text-accent font-bold">{countdown(talk.dd)}</span>
+            {facts.length > 0 && ` · ${facts.join(' · ')}`}
           </p>
         </div>
-        <Button type="button" onClick={() => onOpen(talk.key)}>
-          Details
+      </div>
+      <div className="border-line flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <ProgressSegments segments={p.segments} label={p.label} />
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="text-muted">
+              <b className="text-fg tabular-nums">{p.done}</b> von {p.total} Schritten
+            </span>
+            {p.late > 0 && <LevelTag level="crit">{p.late} überfällig</LevelTag>}
+            {p.soon > 0 && <LevelTag level="warn">{p.soon} bald fällig</LevelTag>}
+          </p>
+        </div>
+        <Button type="button" variant="accent" onClick={() => onOpen(talk.key)}>
+          Ablauf öffnen
         </Button>
       </div>
     </article>
   );
 }
 
-export function TileGrid({
+/** Filter-Kacheln über der Talk-Liste. */
+export function TalkTiles({
   talks,
   active,
   onToggle,
@@ -95,7 +86,7 @@ export function TileGrid({
   onToggle: (k: string) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-7">
+    <TileGrid className="md:grid-cols-4 lg:grid-cols-7">
       {TALK_TILES.map((tile) => (
         <Tile
           key={tile.k}
@@ -106,24 +97,6 @@ export function TileGrid({
           onToggle={() => onToggle(tile.k)}
         />
       ))}
-    </div>
-  );
-}
-
-export function NumberTiles({ stats }: { stats: TalkStats }) {
-  return (
-    <>
-      <StatTile
-        icon={<Users aria-hidden="true" className="size-6" />}
-        value={fmtNumber(stats.totalTn)}
-        label="Teilnehmende gesamt"
-        hint="gehaltene Talks"
-      />
-      <StatTile
-        icon={<Eye aria-hidden="true" className="size-6" />}
-        value={fmtNumber(stats.totalViews)}
-        label="YouTube-Views nach 4 Wo."
-      />
-    </>
+    </TileGrid>
   );
 }

@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { formatShort } from '@/domain/dates';
 import type { SpeakerPool as Pool } from '@/domain/talks/model';
 import { cell } from '@/domain/talks/steps';
-import { EmptyState, Pill, Section, StatTile, Tile } from '@/ui/blocks';
+import { EmptyState, Pill, Section, StatTile, Tile, TileGrid } from '@/ui/blocks';
 import { Button } from '@/ui/shadcn/button';
 
 const CLOSED = /^(gesprochen|abgesagt)$/;
@@ -41,7 +41,7 @@ export function SpeakerPool({
       count={`(${pool.entries.length})`}
       hint={status ? undefined : 'Ohne Filter: alle, die noch nicht gesprochen haben'}
     >
-      <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-7">
+      <TileGrid className="mb-3 md:grid-cols-4 lg:grid-cols-7">
         {pool.statuses.map((s) => (
           <Tile
             key={s.status}
@@ -57,7 +57,7 @@ export function SpeakerPool({
             label="Endorsements erhalten"
           />
         )}
-      </div>
+      </TileGrid>
       {entries.length === 0 ? (
         <EmptyState>Niemand in dieser Gruppe.</EmptyState>
       ) : (
@@ -67,7 +67,7 @@ export function SpeakerPool({
             return (
               <li
                 key={speaker.row}
-                className="border-line bg-surface flex flex-col gap-2 rounded-xl border p-3"
+                className="border-line bg-surface flex flex-col gap-2 rounded-xl border p-3 sm:p-4"
               >
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-display min-w-0 font-semibold break-words">

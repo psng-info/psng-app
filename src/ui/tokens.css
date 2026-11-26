@@ -28,6 +28,10 @@
   --ok-soft: #e3f2e8;
   --glass: rgb(255 255 255 / 0.72);
   --on-accent: #fff;
+  /* Abdunklung hinter Bottom-Sheets: Tinte statt Grau. */
+  --scrim: rgb(44 31 36 / 0.42);
+  /* Leuchten nur für den nächsten Talk (wie der nächste Termin auf psng.info). */
+  --glow: rgb(201 74 110 / 0.18);
 
   --font-display: 'Space Grotesk', system-ui, sans-serif;
   --font-body: 'Atkinson Hyperlegible', system-ui, sans-serif;
@@ -55,6 +59,8 @@
     --ok-soft: #1f3227;
     --glass: rgb(36 26 30 / 0.72);
     --on-accent: #1a1316;
+    --scrim: rgb(8 4 6 / 0.62);
+    --glow: rgb(236 127 157 / 0.12);
   }
 }
 
@@ -76,6 +82,8 @@
   --ok-soft: #1f3227;
   --glass: rgb(36 26 30 / 0.72);
   --on-accent: #1a1316;
+  --scrim: rgb(8 4 6 / 0.62);
+  --glow: rgb(236 127 157 / 0.12);
 }
 
 /* Tailwind-Farben und Schriften aus den Tokens. */
@@ -141,8 +149,26 @@
 
   h1,
   h2,
-  h3 {
+  h3,
+  h4 {
     font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  p,
+  li,
+  dd {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--fg);
+  }
+
+  ::placeholder {
+    color: var(--muted);
+    opacity: 1;
   }
 
   input,

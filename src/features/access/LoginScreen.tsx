@@ -17,19 +17,16 @@ export function LoginScreen({ notice }: { notice?: string | null }) {
     <main className="grid min-h-dvh place-items-center px-4 py-8">
       <section
         aria-labelledby="login-title"
-        className="bg-surface border-line w-full max-w-sm rounded-lg border p-6 text-center shadow-sm"
+        className="bg-surface border-line w-full max-w-sm rounded-2xl border px-6 pt-8 pb-6 text-center shadow-[0_12px_32px_-16px_var(--glow)]"
       >
-        <img
-          src="/psng-logo.png"
-          alt="PSNG Logo"
-          width={72}
-          height={72}
-          className="mx-auto size-18"
-        />
-        <h1 id="login-title" className="font-display mt-4 text-2xl font-semibold">
-          PSNG Orga
+        <span className="border-line bg-surface mx-auto flex size-20 items-center justify-center overflow-hidden rounded-full border">
+          <img src="/psng-logo.png" alt="PSNG Logo" width={72} height={72} className="size-18" />
+        </span>
+        <h1 id="login-title" className="font-display mt-5 text-2xl font-semibold tracking-tight">
+          PSNG <span className="text-accent">Orga</span>
         </h1>
-        <p className="text-muted mt-2">
+        <p className="text-muted mt-0.5 text-sm">Psychedelic Student Network Germany</p>
+        <p className="border-line mt-5 border-t pt-5 text-[0.9375rem] leading-relaxed">
           Für das Kernteam des PSNG. Melde dich mit dem Google-Konto an, mit dem du die PSNG-Sheets
           nutzt.
         </p>

@@ -1,5 +1,5 @@
-import { Search, X } from 'lucide-react';
-import { useId } from 'react';
+import { ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react';
+import { useId, useState } from 'react';
 import { cn } from '@/ui/lib/utils';
 import type { ReactNode } from 'react';
 
@@ -45,51 +45,56 @@ export function FilterBar({
   label?: string;
 }) {
   const searchId = useId();
+  const panelId = useId();
+  // Auf dem Handy stehen die Auswahlfelder hinter „Filter“, ab lg immer sichtbar.
+  const [open, setOpen] = useState(false);
+  const activeSelects = selects.filter((s) => s.value !== '' && s.value !== s.options[0]?.value);
   return (
-    <div
-      role="search"
-      aria-label={label ?? 'Filter'}
-      className="border-line bg-surface rounded-lg border p-3"
-    >
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <div className="col-span-2 lg:col-span-1">
-          <label htmlFor={searchId} className="text-muted mb-1 block text-xs font-bold">
-            {search.label}
-          </label>
-          <div className="relative">
-            <Search
-              aria-hidden="true"
-              className="text-muted pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-            />
-            <input
-              id={searchId}
-              type="search"
-              inputMode="search"
-              value={search.value}
-              placeholder={search.placeholder}
-              onChange={(e) => search.onChange(e.target.value)}
-              className={cn(FIELD, 'pl-9')}
-            />
-          </div>
-        </div>
-        {selects.map((s) => (
-          <SelectField key={s.id} select={s} />
-        ))}
-      </div>
-      {extra}
-      {chips.length > 0 && (
-        <div
-          className="mt-3 flex flex-wrap items-center gap-2"
-          aria-label="Aktive Filter"
-          role="group"
+    <div role="search" aria-label={label ?? 'Filter'} className="flex flex-col gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-2 gap-y-3 lg:grid-cols-5 lg:gap-3">
+        <SearchField id={searchId} search={search} />
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls={panelId}
+          className={cn(
+            'border-line bg-surface inline-flex min-h-11 items-center gap-1.5 rounded-md border px-3 text-sm font-bold lg:hidden',
+            activeSelects.length > 0 && 'border-accent text-accent',
+          )}
         >
+          <SlidersHorizontal aria-hidden="true" className="size-4" />
+          Filter
+          {activeSelects.length > 0 && (
+            <span className="tabular-nums">({activeSelects.length})</span>
+          )}
+          <ChevronDown
+            aria-hidden="true"
+            className={cn('size-4 transition-transform', open && 'rotate-180')}
+          />
+        </button>
+        <div
+          id={panelId}
+          className={cn(
+            'col-span-2 grid grid-cols-2 gap-3 lg:contents',
+            !open && 'hidden lg:contents',
+          )}
+        >
+          {selects.map((s) => (
+            <SelectField key={s.id} select={s} />
+          ))}
+          {extra && <div className="col-span-2 lg:col-span-5">{extra}</div>}
+        </div>
+      </div>
+      {chips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2" aria-label="Aktive Filter" role="group">
           {chips.map((c) => (
             <button
               key={c.id}
               type="button"
               onClick={c.onClear}
               aria-label={`Filter entfernen: ${c.label}`}
-              className="bg-accent-soft text-accent relative inline-flex min-h-8 items-center gap-1 rounded-full px-3 text-sm font-medium after:absolute after:-inset-1.5 after:content-['']"
+              className="bg-accent-soft text-accent relative inline-flex min-h-8 items-center gap-1 rounded-full px-3 text-sm font-bold after:absolute after:-inset-1.5 after:content-['']"
             >
               {c.label}
               <X aria-hidden="true" className="size-3.5" />
@@ -104,6 +109,39 @@ export function FilterBar({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function SearchField({
+  id,
+  search,
+  className,
+}: {
+  id: string;
+  search: { label: string; placeholder?: string; value: string; onChange: (v: string) => void };
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <label htmlFor={id} className="text-muted mb-1 block text-xs font-bold">
+        {search.label}
+      </label>
+      <div className="relative">
+        <Search
+          aria-hidden="true"
+          className="text-muted pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+        />
+        <input
+          id={id}
+          type="search"
+          inputMode="search"
+          value={search.value}
+          placeholder={search.placeholder}
+          onChange={(e) => search.onChange(e.target.value)}
+          className={cn(FIELD, 'pl-9')}
+        />
+      </div>
     </div>
   );
 }
