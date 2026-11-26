@@ -20,6 +20,10 @@ export const shortAnswer = (s: string): string => (s.split('/')[0] ?? '').trim()
 
 export const isUrl = (s: string): boolean => /^https?:\/\//i.test(s);
 
+/** Aktuelle Zellwerte der Spalten, die geändert werden sollen (für die Konfliktprüfung beim Schreiben). */
+export const expectedCells = (talk: Talk, set: Record<string, string>): Record<string, string> =>
+  Object.fromEntries(Object.keys(set).map((c) => [c, cell(talk.raw, c)]));
+
 /** Kurzer Linktext ohne Protokoll. */
 export const linkText = (url: string): string =>
   url.replace(/^https?:\/\/(www\.)?/i, '').slice(0, 42) + (url.length > 50 ? '…' : '');

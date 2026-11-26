@@ -27,9 +27,19 @@ const DEMO_ACCESS: Values = [
   [DEMO_EMAIL, 'Demo', 'kern, hr, admin'],
 ];
 
-/** Fixtures werden nur im Demo-Build mitgeliefert: bei `VITE_DATA=sheets` fällt dieser Zweig weg. */
+/**
+ * True, wenn dieser Build echte Sheets nutzt (gleiche Regel wie `DATA_MODE` in config.ts).
+ * Steht bewusst als reiner `import.meta.env`-Ausdruck hier: Vite setzt die Werte beim Build ein,
+ * der Ausdruck wird dann zu `true` und die Fixture-Importe unten fallen aus dem Bundle.
+ * Mit `DATA_MODE` (enthält `.trim()`) klappt das nicht, dann landen die Fixtures im Produktions-Build.
+ */
+const SHEETS_BUILD =
+  import.meta.env.VITE_DATA === 'sheets' ||
+  (import.meta.env.VITE_DATA !== 'demo' && !!import.meta.env.VITE_GOOGLE_CLIENT_ID);
+
+/** Fixtures werden nur im Demo-Build mitgeliefert: im Sheets-Build fällt dieser Zweig weg. */
 async function loadFixtures(): Promise<Map<string, Values>> {
-  if (import.meta.env.VITE_DATA === 'sheets') {
+  if (SHEETS_BUILD) {
     throw new SheetsError('unknown', 'Demo-Daten sind in diesem Build nicht enthalten.');
   }
   const [talks, todos, hr] = await Promise.all([
@@ -95,9 +105,14 @@ export class DemoAdapter implements SheetsAdapter {
     row[cell.col] = typeof value === 'boolean' ? (value ? 'TRUE' : 'FALSE') : value;
   }
 
-  async append(spreadsheetId: string, range: string, row: (string | boolean)[]): Promise<void> {
+  async append(
+    spreadsheetId: string,
+    range: string,
+    row: (string | boolean)[],
+  ): Promise<number | null> {
     await this.wait();
     const values = await this.tab(spreadsheetId, range);
     values.push(row.map((c) => (typeof c === 'boolean' ? (c ? 'TRUE' : 'FALSE') : c)));
+    return values.length;
   }
 }

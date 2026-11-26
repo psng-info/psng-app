@@ -4,7 +4,7 @@ Was tun, wenn etwas nicht läuft. Die Texte in Anführungszeichen sind die Meldu
 
 ## „Anmeldung abgelaufen. Bitte neu anmelden.“
 
-Das Google-Token läuft nach einer Stunde ab. Die App fordert still ein neues an, und nur wenn das scheitert, kommt diese Meldung mit der Anmeldeseite.
+Das Google-Token läuft nach einer Stunde ab. Die App fordert still ein neues an, und nur wenn das scheitert, kommt diese Meldung mit der Anmeldeseite. Still klappt es meist nur nach einem Klick (Google öffnet dafür kurz ein Fenster, das Browser sonst blockieren). Wer die App länger offen lässt, sieht nach etwa einer Stunde beim nächsten automatischen Neuladen die Anmeldeseite. Nach dem Anmelden lädt die App alles frisch.
 
 - Neu anmelden.
 - Wenn es sich ständig wiederholt: prüfen, ob die Person als Testnutzer im Google-Cloud-Projekt „PSNG Orga“ steht, und Cookies von Google für den Browser nicht blockieren (Anmeldung läuft über ein Popup).
@@ -18,6 +18,7 @@ Das Google-Token läuft nach einer Stunde ab. Die App fordert still ein neues an
 | „Das Google-Anmeldeskript konnte nicht geladen werden.“ | Kein Netz oder ein Blocker verhindert `accounts.google.com`. |
 | „Anmeldung bei Google fehlgeschlagen.“ | Meist falsche Client-ID oder die Domain fehlt bei den autorisierten JavaScript-Quellen. In der Google Cloud Console prüfen. |
 | „Die E-Mail-Adresse konnte nicht gelesen werden.“ | Der Scope `email` fehlt am Zustimmungsbildschirm. |
+| „Ohne Zugriff auf Google Sheets funktioniert die App nicht. …“ | Beim Google-Fenster wurde das Häkchen für Tabellen (Sheets) abgewählt. Neu anmelden und alle Häkchen setzen. |
 | „Anmeldung gerade nicht möglich.“ (Anmeldeseite, Produktion) | `VITE_GOOGLE_CLIENT_ID` fehlt im Vercel-Projekt für Production. Setzen und neu deployen. |
 | Google zeigt „Zugriff blockiert“ | Die Person ist nicht als Testnutzer eingetragen (siehe „Neue Person ins Team“). |
 
@@ -47,6 +48,24 @@ Ein Tab wurde umbenannt oder das Sheet ersetzt. Tab-Namen stehen in `src/data/co
 
 Beim Speichern wurde die Zeile im Sheet nicht mehr gefunden (jemand hat sie gelöscht oder bei einem Talk Datum oder Speaker geändert). „Neu laden“ und die Änderung wiederholen. Gespeichert wurde nichts.
 
+Kommt die Meldung bei einem Talk ohne Speaker oder bei zwei Zeilen mit gleichem Datum und Speaker: Der Talk ist im Sheet nicht eindeutig, die App schreibt dann lieber nicht. Im Sheet Speaker oder Datum ergänzen.
+
+## „Die ID T… steht mehrfach im Tab To-dos. …“
+
+Zwei Zeilen haben dieselbe ID. Die App schreibt in keine davon. Im Sheet einer Zeile die nächste freie ID geben. (Legen zwei Personen gleichzeitig ein To-do an, weicht die App selbst aus.)
+
+## „„Spalte“ wurde inzwischen im Sheet geändert. Neu laden und nochmal versuchen.“
+
+Beim Speichern der Eckdaten stand in der Zelle schon etwas anderes als beim Öffnen des Formulars: jemand hat parallel dieselbe Zelle geändert. Gespeichert wurde nichts. „Neu laden“, den neuen Stand ansehen, dann die eigene Änderung wiederholen.
+
+## „Nur teilweise gespeichert (x von y Feldern). …“
+
+Die App schreibt jede Zelle einzeln. Ist mittendrin die Verbindung weg, steht im Sheet ein halber Stand (z. B. Status „erledigt“ ohne Datum). „Neu laden“, prüfen und die Aktion wiederholen oder im Sheet ergänzen.
+
+## „Text zu lang …“ und „Google hat den Wert abgelehnt. …“
+
+Eine Zelle in Google Sheets fasst höchstens 50.000 Zeichen. Text kürzen, lange Notizen lieber in ein Doc und den Link eintragen.
+
 ## „Keine Verbindung zu Google. Netzwerk prüfen und neu laden.“
 
 Netzwerkfehler. Siehe nächster Abschnitt.
@@ -56,6 +75,8 @@ Netzwerkfehler. Siehe nächster Abschnitt.
 Die App ist installierbar (PWA) und speichert die zuletzt geladenen Daten lokal:
 
 - Gespeichert werden **To-dos, Talks und die Zugangsliste**, in IndexedDB (Datenbank `psng-orga-cache`), höchstens 7 Tage. Wird eine neue App-Version ausgeliefert, wird der alte Cache verworfen.
+- Telefonnummern von Speaker:innen (Spalten „Telefon“ und „Handynummer…“) werden vor dem Speichern geleert. Nach einem Neustart fehlen sie, bis die Talks frisch geladen sind.
+- Schreibaktionen werden nie gespeichert.
 - **Kandidat:innen (HR) werden nie gespeichert**, auch nicht kurz. Offline ist diese Ansicht leer oder zeigt nur, was im geöffneten Tab noch im Speicher liegt.
 - Im Demo-Modus gibt es keinen Cache.
 - Ohne Netz (oder wenn ein Abruf scheitert, aber Daten da sind) steht im Kopf der Ansicht „Offline, Stand TT.MM.JJJJ HH:MM“ mit dem Zeitpunkt der angezeigten Daten. Alle Schreib-Aktionen (abhaken, Notiz, neues To-do, Schritt, Eckdaten, Status) sind dann deaktiviert, mit dem Hinweis „Offline: Änderungen sind erst mit Verbindung möglich.“ Es wird nie offline geschrieben und nichts nachgeholt.
@@ -66,6 +87,7 @@ Die App ist installierbar (PWA) und speichert die zuletzt geladenen Daten lokal:
 - Normalerweise: in der App „Abmelden“. Das löscht den Lesecache und alle IndexedDB-Daten dieser Domain.
 - Von Hand: Browser, Einstellungen, Websitedaten der App-Domain löschen (oder in den Entwicklertools unter „Application“, „Storage“, „Clear site data“). Danach neu laden.
 - Bei seltsamen Daten nach einem Update: einmal abmelden und neu anmelden.
+- Wechselt jemand am selben Gerät das Google-Konto, ohne vorher abzumelden, löscht die App die Daten des alten Kontos beim Anmelden (solange die App dazwischen nicht neu gestartet wurde). Auf geteilten Geräten trotzdem immer abmelden.
 
 ## Neue Person ins Team
 

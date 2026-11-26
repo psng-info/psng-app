@@ -10,8 +10,11 @@ export interface SheetsAdapter {
   batchGet(spreadsheetId: string, ranges: string[]): Promise<Values[]>;
   /** Schreibt genau eine Zelle, z. B. `Lectures!F12`. */
   updateCell(spreadsheetId: string, a1: string, value: string | boolean): Promise<void>;
-  /** Hängt eine Zeile an, z. B. an `'Talk-Schritte'!A1`. */
-  append(spreadsheetId: string, range: string, row: (string | boolean)[]): Promise<void>;
+  /**
+   * Hängt eine Zeile an, z. B. an `'Talk-Schritte'!A1`.
+   * Gibt die Sheet-Zeilennummer der neuen Zeile zurück, `null` wenn Google sie nicht meldet.
+   */
+  append(spreadsheetId: string, range: string, row: (string | boolean)[]): Promise<number | null>;
 }
 
 export type SheetsErrorKind =
@@ -20,7 +23,9 @@ export type SheetsErrorKind =
   | 'quota' // 429: Google-Limit pro Minute
   | 'not_found' // 404: Sheet oder Tab fehlt
   | 'missing_column' // Kopfzeile fehlt
-  | 'row_missing' // Zielzeile beim Schreiben nicht gefunden
+  | 'row_missing' // Zielzeile beim Schreiben nicht gefunden (oder Schlüssel nicht eindeutig)
+  | 'conflict' // jemand hat dieselbe Zelle inzwischen im Sheet geändert
+  | 'invalid' // Google oder die App lehnt den Wert ab (z. B. Text zu lang)
   | 'network'
   | 'unknown';
 
@@ -34,4 +39,15 @@ export class SheetsError extends Error {
     super(message);
     this.name = 'SheetsError';
   }
+}
+
+/**
+ * Ob sich ein zweiter Leseversuch lohnt. Nicht bei fehlender Freigabe, abgelaufener Anmeldung
+ * (würde nur ein weiteres Google-Fenster versuchen) oder fehlendem Tab/Spalte: das ändert sich
+ * nicht von selbst und kostet nur Abrufe vom Google-Limit (ca. 60 pro Minute).
+ */
+export function shouldRetry(failureCount: number, error: unknown): boolean {
+  if (failureCount >= 1) return false;
+  if (!(error instanceof SheetsError)) return true;
+  return error.kind === 'network' || error.kind === 'quota' || error.kind === 'unknown';
 }

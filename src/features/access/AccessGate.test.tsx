@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AdapterProvider } from '@/data/AdapterContext';
 import { DemoAdapter } from '@/data/sheets/DemoAdapter';
+import { SheetsError } from '@/data/sheets/SheetsAdapter';
 import { AuthContext, type AuthState } from '@/auth/useAuth';
 import { AuthProvider } from '@/auth/AuthProvider';
 import { AccessGate } from './AccessGate';
@@ -27,8 +28,10 @@ function Who() {
   return <p>Hallo {u.name}</p>;
 }
 
-function renderGate(state: AuthState) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function renderGate(
+  state: AuthState,
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   return render(
     <QueryClientProvider client={client}>
       <AuthContext.Provider value={state}>
@@ -92,5 +95,35 @@ describe('AccessGate', () => {
     );
     expect(await screen.findByText('Hallo Demo')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
+  });
+
+  /** Zugangsliste schon im Cache (z. B. aus dem Lesecache), aber veraltet: wird beim Öffnen neu gelesen. */
+  function cachedClient() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(
+      ['access', 'demo@example.org'],
+      [{ email: 'demo@example.org', name: 'Demo', roles: new Set(['kern']) }],
+      { updatedAt: 0 },
+    );
+    return client;
+  }
+
+  it('Neuladen scheitert am Netz, Liste ist bekannt: App läuft weiter', async () => {
+    const spy = vi
+      .spyOn(DemoAdapter.prototype, 'batchGet')
+      .mockRejectedValue(new SheetsError('network', 'Keine Verbindung zu Google.'));
+    renderGate(auth({ status: 'signed_in', email: 'demo@example.org' }), cachedClient());
+    expect(await screen.findByText('Hallo Demo')).toBeInTheDocument();
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.getByText('Hallo Demo')).toBeInTheDocument();
+  });
+
+  it('Freigabe entzogen: sperrt auch mit bekannter Liste', async () => {
+    vi.spyOn(DemoAdapter.prototype, 'batchGet').mockRejectedValue(
+      new SheetsError('forbidden', 'Keine Berechtigung.'),
+    );
+    renderGate(auth({ status: 'signed_in', email: 'demo@example.org' }), cachedClient());
+    expect(await screen.findByRole('heading', { name: 'Keine Freigabe' })).toBeInTheDocument();
   });
 });

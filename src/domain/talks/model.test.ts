@@ -488,6 +488,25 @@ describe('findLectureRow', () => {
     ]);
     expect(findLectureRow(v, '03.12.2026 · Anna Beispiel')).toBe(3);
   });
+  it('Talk ohne Speaker: nie eine Leerzeile treffen', () => {
+    const v = table(LECTURE_HEADERS, [
+      { Datum: '', Speaker: '', Titel: '' },
+      { Datum: '', Speaker: '', Titel: 'Idee Mikrodosierung' },
+    ]);
+    expect(findLectureRow(v, 'ohne Datum · ')).toBe(3);
+  });
+  it('mehrdeutiger Schlüssel: null statt der ersten Zeile', () => {
+    const v = table(LECTURE_HEADERS, [
+      { Datum: '', Speaker: '', Titel: 'Idee A' },
+      { Datum: '', Speaker: '', Titel: 'Idee B' },
+    ]);
+    expect(findLectureRow(v, 'ohne Datum · ')).toBeNull();
+    const twice = table(LECTURE_HEADERS, [
+      { Datum: '03.12.2026', Speaker: 'Anna Beispiel' },
+      { Datum: '03.12.2026', Speaker: 'Anna Beispiel' },
+    ]);
+    expect(findLectureRow(twice, '03.12.2026 · Anna Beispiel')).toBeNull();
+  });
 });
 
 describe('Lücken', () => {

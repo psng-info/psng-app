@@ -5,7 +5,7 @@ import {
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query';
-import { startOfDay } from '@/domain/dates';
+import { parseDate, startOfDay } from '@/domain/dates';
 import { headerOf, type Values } from '@/domain/rows';
 import {
   lectureChanges,
@@ -15,9 +15,10 @@ import {
 } from '@/domain/talks/write';
 import { useSheets } from '../AdapterContext';
 import { RANGES, REFETCH, SHEET_IDS, STALE_MS, TABS } from '../config';
-import { safeCell, safeRow } from '../sheets/cellValue';
+import { safeRow } from '../sheets/cellValue';
 import { SheetsError, type SheetsAdapter } from '../sheets/SheetsAdapter';
 import { a1, quoteTab, requireColumns } from '../sheets/table';
+import { checkCellLength, invalidateWhenIdle, writeCells } from '../sheets/write';
 import type { WriteCallbacks } from './todos';
 
 export interface TalksData {
@@ -71,18 +72,32 @@ export async function logStep(
 ): Promise<void> {
   const values = await fresh(sheets, RANGES.talks.steps);
   const header = requireColumns(values, ['Zeitpunkt', 'Talk', 'Schritt'], TABS.steps);
-  await sheets.append(
-    SHEET_IDS.lectures,
-    `${quoteTab(TABS.steps)}!A1`,
-    safeRow(stepLogRow(header, entry, today)),
-  );
+  const row = safeRow(stepLogRow(header, entry, today));
+  checkCellLength(row);
+  await sheets.append(SHEET_IDS.lectures, `${quoteTab(TABS.steps)}!A1`, row);
 }
 
-/** Eckdaten ändern: Lectures frisch lesen, Zeile über den Talk-Schlüssel finden, nur geänderte Zellen schreiben. */
+/** Gleicher Zellinhalt? Datumswerte zählen als gleich, wenn sie denselben Tag meinen (12.1.26 = 12.01.2026). */
+function sameCell(col: string, a: string, b: string): boolean {
+  if (a.trim() === b.trim()) return true;
+  if (col !== 'Datum') return false;
+  const da = parseDate(a);
+  const db = parseDate(b);
+  return !!da && !!db && +da === +db;
+}
+
+/**
+ * Eckdaten ändern: Lectures frisch lesen, Zeile über den Talk-Schlüssel finden, nur geänderte Zellen schreiben.
+ *
+ * `expected` sind die Zellwerte, die das Formular beim Öffnen gesehen hat. Steht im Sheet inzwischen
+ * etwas anderes (jemand hat dieselbe Zelle parallel geändert), wird nichts geschrieben: `conflict`.
+ * So überschreibt niemand unbemerkt die Änderung einer anderen Person.
+ */
 export async function updateLecture(
   sheets: SheetsAdapter,
   key: string,
   set: Record<string, string>,
+  expected?: Record<string, string>,
 ): Promise<void> {
   let found: ReturnType<typeof lectureChanges>;
   const values = await fresh(sheets, RANGES.talks.lectures);
@@ -90,20 +105,28 @@ export async function updateLecture(
   try {
     found = lectureChanges(values, key, set);
   } catch (e) {
-    throw new SheetsError('unknown', e instanceof Error ? e.message : 'Eingabe ungültig.');
+    throw new SheetsError('invalid', e instanceof Error ? e.message : 'Eingabe ungültig.');
   }
   if (!found)
     throw new SheetsError(
       'row_missing',
       `Zeile für ${key} nicht gefunden. Neu laden und nochmal versuchen.`,
     );
+  const current = values[found.row - 1] ?? [];
   for (const c of found.cells) {
-    await sheets.updateCell(
-      SHEET_IDS.lectures,
-      a1(TABS.lectures, c.index, found.row),
-      safeCell(c.value),
-    );
+    const before = expected?.[c.col];
+    if (before !== undefined && !sameCell(c.col, String(current[c.index] ?? ''), before)) {
+      throw new SheetsError(
+        'conflict',
+        `„${c.col}“ wurde inzwischen im Sheet geändert. Neu laden und nochmal versuchen.`,
+      );
+    }
   }
+  await writeCells(
+    sheets,
+    SHEET_IDS.lectures,
+    found.cells.map((c) => ({ a1: a1(TABS.lectures, c.index, found.row), value: c.value })),
+  );
 }
 
 const today = (): Date => startOfDay(new Date());
@@ -118,6 +141,8 @@ function withLogRow(data: TalksData, entry: StepLogInput, day: Date): TalksData 
 export interface LectureUpdate {
   key: string;
   set: Record<string, string>;
+  /** Zellwerte beim Öffnen des Formulars (optional, für die Prüfung auf parallele Änderungen). */
+  expected?: Record<string, string>;
 }
 
 export function useLogStep(callbacks: WriteCallbacks<StepLogInput, void> = {}) {
@@ -146,7 +171,7 @@ export function useUpdateLecture(callbacks: WriteCallbacks<LectureUpdate, void> 
   const qc = useQueryClient();
   return useMutation({
     mutationKey: LECTURE_MUTATION,
-    mutationFn: (v: LectureUpdate) => updateLecture(sheets, v.key, v.set),
+    mutationFn: (v: LectureUpdate) => updateLecture(sheets, v.key, v.set, v.expected),
     onMutate: async (v) => {
       await qc.cancelQueries({ queryKey: TALKS_KEY });
       const previous = qc.getQueryData<TalksData>(TALKS_KEY);
@@ -171,12 +196,7 @@ export function useUpdateLecture(callbacks: WriteCallbacks<LectureUpdate, void> 
   });
 }
 
-/** Erst neu lesen, wenn keine weitere Schreibaktion unterwegs ist (sonst überschreibt es deren Anzeige). */
-function settle(qc: QueryClient): void {
-  if (qc.isMutating({ mutationKey: ['talks'] }) <= 1) {
-    void qc.invalidateQueries({ queryKey: TALKS_KEY });
-  }
-}
+const settle = (qc: QueryClient): void => invalidateWhenIdle(qc, ['talks'], TALKS_KEY);
 
 /** Was gerade geschrieben wird: Schritte als `Talk|Schritt`, Eckdaten als Talk-Schlüssel. */
 export function usePendingTalkWrites(): { steps: Set<string>; lectures: Set<string> } {

@@ -28,8 +28,12 @@ export function AccessGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (access.isError) {
-    const err = access.error;
+  // Scheitert nur das Neuladen (Netz weg, Google-Limit) und die Liste ist schon da, läuft die App
+  // mit der bekannten Liste weiter (Lesecache). Abgelaufene Anmeldung oder entzogene Freigabe sperren immer.
+  const err = access.error;
+  const hardError =
+    err instanceof SheetsError && (err.kind === 'unauthenticated' || err.kind === 'forbidden');
+  if (access.isError && (hardError || !access.data)) {
     if (err instanceof SheetsError && err.kind === 'unauthenticated') {
       return <LoginScreen notice={err.message} />;
     }
@@ -39,7 +43,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
         <p>
           {forbidden
             ? 'Keine Freigabe für das Lecture-Sheet. Frag Lennert oder jemanden mit Admin-Rolle, ob du in Google Drive Zugriff bekommst.'
-            : err.message}
+            : (err?.message ?? '')}
         </p>
         <div className="mt-6 flex flex-col gap-2">
           {!forbidden && (

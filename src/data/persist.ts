@@ -15,6 +15,53 @@ export const PERSISTED_KEYS: readonly string[] = ['talks', 'todos', 'access'];
 /** Cache-Buster: bei neuer App-Version wird der alte Cache verworfen. */
 export const APP_VERSION: string = import.meta.env.VITE_APP_VERSION ?? 'dev';
 
+/**
+ * Was der Lesecache speichern darf. Schreibaktionen nie: TanStack würde sonst offline pausierte
+ * Änderungen (z. B. an Kandidat:innen, mit Namen und Kommentar) in IndexedDB ablegen.
+ */
+export const DEHYDRATE_OPTIONS = {
+  shouldDehydrateQuery: (q: Pick<Query, 'queryKey' | 'state' | 'meta'>) => shouldPersist(q),
+  shouldDehydrateMutation: () => false,
+} as const;
+
+/** Spalten mit Telefonnummern (Tab Speaker bzw. Speaker-Formular), Anfang des Kopfzeilen-Namens. */
+const PHONE_PREFIXES = ['Telefon', 'Handynummer'];
+
+/** Kopie der Rohwerte, in der Telefonnummern-Spalten leer sind (Kopfzeile bleibt). */
+function withoutPhones(values: unknown): unknown {
+  if (!Array.isArray(values) || !Array.isArray(values[0])) return values;
+  const rows = values as unknown[][];
+  const head = (rows[0] ?? []).map((h) => String(h).trim());
+  const drop = head.flatMap((h, i) => (PHONE_PREFIXES.some((p) => h.startsWith(p)) ? [i] : []));
+  if (drop.length === 0) return values;
+  return rows.map((r, i) => (i === 0 ? r : r.map((c, j) => (drop.includes(j) ? '' : c))));
+}
+
+/**
+ * Vor dem Speichern: Telefonnummern von Speaker:innen nicht offline ablegen (Datenschutz, nur auf Klick
+ * sichtbar). Nach dem Neuladen fehlen sie, bis die Talks frisch geladen sind (passiert beim Start).
+ */
+export function scrubForStorage(client: PersistedClient): PersistedClient {
+  return {
+    ...client,
+    clientState: {
+      ...client.clientState,
+      queries: client.clientState.queries.map((q) => {
+        if (q.queryKey[0] !== 'talks' || !q.state.data || typeof q.state.data !== 'object')
+          return q;
+        const data = q.state.data as Record<string, unknown>;
+        return {
+          ...q,
+          state: {
+            ...q.state,
+            data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, withoutPhones(v)])),
+          },
+        };
+      }),
+    },
+  };
+}
+
 /** Nur erfolgreiche Abfragen auf der Liste, und nie solche mit `meta: { persist: false }`. */
 export function shouldPersist(query: Pick<Query, 'queryKey' | 'state' | 'meta'>): boolean {
   if (query.state.status !== 'success') return false;
@@ -53,7 +100,7 @@ export function createIdbPersister(): Persister {
   return {
     persistClient: async (client: PersistedClient) => {
       try {
-        await run('readwrite', (s) => s.put(client, KEY));
+        await run('readwrite', (s) => s.put(scrubForStorage(client), KEY));
       } catch {
         /* Cache ist optional */
       }

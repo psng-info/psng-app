@@ -15,8 +15,9 @@ import {
 import { useSheets } from '../AdapterContext';
 import { RANGES, REFETCH, SHEET_IDS, STALE_MS, TABS } from '../config';
 import { SheetsError, type SheetsAdapter } from '../sheets/SheetsAdapter';
-import { safeCell, safeRow } from '../sheets/cellValue';
+import { safeRow } from '../sheets/cellValue';
 import { a1, quoteTab, requireColumns } from '../sheets/table';
+import { checkCellLength, invalidateWhenIdle, writeCells, type CellWrite } from '../sheets/write';
 
 export const TODOS_KEY = ['todos'] as const;
 
@@ -32,26 +33,35 @@ async function readTab(sheets: SheetsAdapter): Promise<Values> {
   return values ?? [];
 }
 
-/** Schreibt die Zellen einer Zeile einzeln, Spalten über den Kopfzeilen-Namen. Fehlende optionale Spalten werden übersprungen. */
-async function writeCells(
-  sheets: SheetsAdapter,
-  header: string[],
-  sheetRow: number,
-  patch: Record<string, string>,
-): Promise<void> {
-  for (const [name, value] of Object.entries(patch)) {
+/** Zellen einer Zeile, Spalten über den Kopfzeilen-Namen. Fehlende optionale Spalten werden übersprungen. */
+function rowCells(header: string[], sheetRow: number, patch: Record<string, string>): CellWrite[] {
+  return Object.entries(patch).flatMap(([name, value]) => {
     const col = header.indexOf(name);
-    if (col < 0) continue;
-    await sheets.updateCell(SHEET_IDS.todos, a1(TABS.todos, col, sheetRow), safeCell(value));
-  }
+    return col < 0 ? [] : [{ a1: a1(TABS.todos, col, sheetRow), value }];
+  });
 }
 
-/** Frisch lesen, Zeile über die Spalte ID finden. Wirft `row_missing`. */
+/** Wie oft eine ID in der Spalte ID vorkommt. */
+function idCount(values: Values, header: string[], id: string): number {
+  const c = header.indexOf('ID');
+  return values.slice(1).filter((r) => String(r[c] ?? '').trim() === id).length;
+}
+
+/**
+ * Frisch lesen, Zeile über die Spalte ID finden. Wirft `row_missing`, auch wenn die ID doppelt
+ * vorkommt: dann wüssten wir nicht, welche Zeile gemeint ist, und schreiben lieber gar nicht.
+ */
 async function locate(sheets: SheetsAdapter, id: string, required: string[]) {
   const values = await readTab(sheets);
   const header = requireColumns(values, ['ID', ...required], TABS.todos);
   const idx = findTodoRow(values, id);
   if (idx < 0) throw missing(id);
+  if (idCount(values, header, id) > 1) {
+    throw new SheetsError(
+      'row_missing',
+      `Die ID ${id} steht mehrfach im Tab To-dos. Bitte im Sheet eine der Zeilen umbenennen.`,
+    );
+  }
   return { values, header, idx, sheetRow: idx + 1 };
 }
 
@@ -59,7 +69,7 @@ async function locate(sheets: SheetsAdapter, id: string, required: string[]) {
 export async function completeTodo(sheets: SheetsAdapter, id: string, today: Date): Promise<void> {
   const { values, header, idx, sheetRow } = await locate(sheets, id, ['Status', 'Erledigt']);
   if ((values[idx]?.[header.indexOf('Status')] ?? '').trim() === 'erledigt') return;
-  await writeCells(sheets, header, sheetRow, completePatch(today));
+  await writeCells(sheets, SHEET_IDS.todos, rowCells(header, sheetRow, completePatch(today)));
 }
 
 /** Notiz ergänzen: „TT.MM.: Text“ unter den bestehenden Text, Geändert=heute. */
@@ -72,13 +82,23 @@ export async function addTodoNote(
   if (!text.trim()) return;
   const { values, header, idx, sheetRow } = await locate(sheets, id, ['Notiz']);
   const existing = values[idx]?.[header.indexOf('Notiz')] ?? '';
-  await writeCells(sheets, header, sheetRow, {
-    Notiz: appendNote(existing, text, today),
-    Geändert: completePatch(today)['Geändert'] ?? '',
-  });
+  await writeCells(
+    sheets,
+    SHEET_IDS.todos,
+    rowCells(header, sheetRow, {
+      Notiz: appendNote(existing, text, today),
+      Geändert: completePatch(today)['Geändert'] ?? '',
+    }),
+  );
 }
 
-/** Neues To-do: frisch lesen, nächste ID, eine Zeile anhängen. Gibt die neue ID zurück. */
+/**
+ * Neues To-do: frisch lesen, nächste ID, eine Zeile anhängen. Gibt die neue ID zurück.
+ *
+ * Legen zwei Personen fast gleichzeitig ein To-do an, lesen beide dieselbe höchste ID.
+ * Deshalb danach noch einmal lesen: Steht die ID doppelt und ist unsere Zeile (Google meldet
+ * ihre Nummer beim Anhängen) die spätere, bekommt sie die nächste freie ID.
+ */
 export async function createTodo(
   sheets: SheetsAdapter,
   fields: Partial<NewTodoFields>,
@@ -86,16 +106,24 @@ export async function createTodo(
 ): Promise<string> {
   const errors = validateNewTodo(fields);
   const first = Object.values(errors)[0];
-  if (first) throw new SheetsError('unknown', first);
+  if (first) throw new SheetsError('invalid', first);
   const values = await readTab(sheets);
   const header = requireColumns(values, ['ID', 'To-do'], TABS.todos);
   const id = nextTodoId(values);
-  await sheets.append(
-    SHEET_IDS.todos,
-    `${quoteTab(TABS.todos)}!A1`,
-    safeRow(newTodoRow(header, { ...fields, ID: id }, today)),
-  );
-  return id;
+  const row = safeRow(newTodoRow(header, { ...fields, ID: id }, today));
+  checkCellLength(row);
+  const sheetRow = await sheets.append(SHEET_IDS.todos, `${quoteTab(TABS.todos)}!A1`, row);
+  if (sheetRow === null) return id;
+
+  const after = await readTab(sheets);
+  if (idCount(after, header, id) <= 1) return id;
+  const ownId = String(after[sheetRow - 1]?.[header.indexOf('ID')] ?? '').trim();
+  if (ownId !== id) return id; // Zeilennummer passt nicht (Sheet umsortiert): lieber nichts ändern
+  // Nur die spätere Zeile weicht aus, sonst würden beide Personen ihre Zeile umbenennen.
+  if (findTodoRow(after, id) + 1 === sheetRow) return id;
+  const nextId = nextTodoId(after);
+  await writeCells(sheets, SHEET_IDS.todos, rowCells(header, sheetRow, { ID: nextId }));
+  return nextId;
 }
 
 const today = (): Date => startOfDay(new Date());
@@ -142,7 +170,7 @@ function useWrite<V, R = void>(
       callbacks.onError?.(err, v);
     },
     onSuccess: (result, v) => callbacks.onSuccess?.(result, v),
-    onSettled: () => qc.invalidateQueries({ queryKey: TODOS_KEY }),
+    onSettled: () => invalidateWhenIdle(qc, ['todos'], TODOS_KEY),
   });
 }
 

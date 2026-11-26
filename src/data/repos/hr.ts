@@ -3,15 +3,14 @@ import { checkEdit, cellText, type HrRaw, type HrSet } from '@/domain/hr';
 import { headerOf, rowsOf, type Values } from '@/domain/rows';
 import { norm } from '@/domain/text';
 import { useSheets } from '../AdapterContext';
-import { RANGES, SHEET_IDS, STALE_MS, TABS } from '../config';
+import { RANGES, REFETCH, SHEET_IDS, STALE_MS, TABS } from '../config';
 import { SheetsError, type SheetsAdapter } from '../sheets/SheetsAdapter';
-import { safeCell } from '../sheets/cellValue';
 import { a1, requireColumns } from '../sheets/table';
+import { invalidateWhenIdle, writeCells } from '../sheets/write';
 
 export const HR_QUERY_KEY = ['hr'] as const;
 /** HR-Daten sind personenbezogen: nie offline speichern, auch nicht über Persister. */
 export const HR_META = { persist: false } as const;
-const HR_REFETCH_MS = 15 * 60_000;
 
 /** Ein batchGet für die vier HR-Tabs. Das Modell baut `buildPeople` in der Domain. */
 export function useHrData() {
@@ -20,7 +19,7 @@ export function useHrData() {
     queryKey: HR_QUERY_KEY,
     meta: HR_META,
     staleTime: STALE_MS.hr,
-    refetchInterval: HR_REFETCH_MS,
+    refetchInterval: REFETCH.hr,
     queryFn: async (): Promise<HrRaw> => {
       const r = RANGES.hr;
       const [kandidaten, abbrueche, formular, notizen] = await sheets.batchGet(SHEET_IDS.hr, [
@@ -73,13 +72,14 @@ export async function writeCandidate(
   const values = fresh ?? [];
   const header = requireColumns(values, ['Vorname', 'Nachname', ...cols], TABS.kandidaten);
   const row = findCandidateRow(values, name);
-  for (const [col, v] of Object.entries(edit)) {
-    await sheets.updateCell(
-      SHEET_IDS.hr,
-      a1(TABS.kandidaten, header.indexOf(col), row),
-      safeCell(v),
-    );
-  }
+  await writeCells(
+    sheets,
+    SHEET_IDS.hr,
+    Object.entries(edit).map(([col, v]) => ({
+      a1: a1(TABS.kandidaten, header.indexOf(col), row),
+      value: v,
+    })),
+  );
 }
 
 /** Wendet eine Änderung auf eine Kopie der Rohwerte an (für optimistische Anzeige). */
@@ -133,11 +133,6 @@ export function useUpdateCandidate() {
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) qc.setQueryData(HR_QUERY_KEY, ctx.previous);
     },
-    onSettled: () => {
-      // Erst neu lesen, wenn keine weitere Änderung unterwegs ist (sonst überschreibt es deren Anzeige).
-      if (qc.isMutating({ mutationKey: MUTATION_KEY }) <= 1) {
-        void qc.invalidateQueries({ queryKey: HR_QUERY_KEY });
-      }
-    },
+    onSettled: () => invalidateWhenIdle(qc, MUTATION_KEY, HR_QUERY_KEY),
   });
 }

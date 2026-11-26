@@ -63,6 +63,7 @@ function Links({ value }: { value: string }) {
   );
 }
 
+/** Externer Link. Nur http(s): Zellinhalte wie `javascript:…` werden nie zu einem Link. */
 function ExtLink({
   href,
   children,
@@ -72,6 +73,7 @@ function ExtLink({
   children: ReactNode;
   className?: string;
 }) {
+  if (!isUrl(href)) return null;
   return (
     <a
       href={href}
@@ -475,7 +477,7 @@ function AfterTalk({ talk }: { talk: Talk }) {
         <Kpi value={tn ? String(tn) : ''} label="TN gesamt" />
         <Kpi value={cell(r, 'Views nach 4 Wo.')} label="Views nach 4 Wo." />
       </div>
-      {hasYT(talk) ? (
+      {hasYT(talk) && isUrl(cell(r, 'YouTube-Link')) ? (
         <ExtLink href={cell(r, 'YouTube-Link')} className="self-start font-bold">
           <Play aria-hidden="true" className="size-3.5" />
           Aufnahme auf YouTube

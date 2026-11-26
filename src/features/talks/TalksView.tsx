@@ -26,7 +26,8 @@ import { EmptyState, ErrorBanner, PageHeader, Section, Skeleton } from '@/ui/blo
 import { Button } from '@/ui/shadcn/button';
 import { TalkActionsContext, type TalkActions } from './actions';
 import { ActionList } from './ActionList';
-import { FactsSheet } from './FactsSheet';
+import { FactsSheet, type SaveFacts } from './FactsSheet';
+import { expectedCells } from './format';
 import { StepSheet, type StepEdit } from './StepSheet';
 import { NO_FILTERS, hasActiveFilter, type TalkFilters } from './filters';
 import { NextTalkHero, NumberTiles, TileGrid } from './Lage';
@@ -167,7 +168,7 @@ export function TalksView({
       editFacts: (talk: Talk) => setFactsTarget(talk.key),
       applyFix: (talk: Talk, fix: NonNullable<Flag['fix']>) => {
         setProblem('');
-        lectureMutate({ key: talk.key, set: fix.set });
+        lectureMutate({ key: talk.key, set: fix.set, expected: expectedCells(talk, fix.set) });
       },
       pendingSteps: pending.steps,
       pendingTalks: pending.lectures,
@@ -192,9 +193,9 @@ export function TalksView({
     },
     [logMutate, user.name],
   );
-  const saveFacts = (talk: Talk, set: Record<string, string>): void => {
+  const saveFacts: SaveFacts = (talk, set, expected) => {
     setProblem('');
-    lectureMutate({ key: talk.key, set });
+    lectureMutate({ key: talk.key, set, expected });
     setFactsTarget(null);
     // Neues Datum = neuer Schlüssel: die Karte unter dem neuen Schlüssel offen halten
     if ('Datum' in set) openFromUi(talkKey(parseDate(set.Datum), cell(talk.raw, 'Speaker')));
