@@ -5,6 +5,7 @@ import { norm } from '@/domain/text';
 import { useSheets } from '../AdapterContext';
 import { RANGES, SHEET_IDS, STALE_MS, TABS } from '../config';
 import { SheetsError, type SheetsAdapter } from '../sheets/SheetsAdapter';
+import { safeCell } from '../sheets/cellValue';
 import { a1, requireColumns } from '../sheets/table';
 
 export const HR_QUERY_KEY = ['hr'] as const;
@@ -73,7 +74,11 @@ export async function writeCandidate(
   const header = requireColumns(values, ['Vorname', 'Nachname', ...cols], TABS.kandidaten);
   const row = findCandidateRow(values, name);
   for (const [col, v] of Object.entries(edit)) {
-    await sheets.updateCell(SHEET_IDS.hr, a1(TABS.kandidaten, header.indexOf(col), row), v);
+    await sheets.updateCell(
+      SHEET_IDS.hr,
+      a1(TABS.kandidaten, header.indexOf(col), row),
+      safeCell(v),
+    );
   }
 }
 

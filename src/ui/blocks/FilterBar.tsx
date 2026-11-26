@@ -32,15 +32,25 @@ export function FilterBar({
   selects,
   chips,
   onClearAll,
+  extra,
+  label,
 }: {
   search: { label: string; placeholder?: string; value: string; onChange: (v: string) => void };
   selects: FilterSelect[];
   chips: FilterChip[];
   onClearAll: () => void;
+  /** Zusätzliche Bedienelemente unter den Feldern, z. B. ein Schalter. */
+  extra?: ReactNode;
+  /** Beschriftung der Gruppe für Screenreader, z. B. „To-dos filtern“. */
+  label?: string;
 }) {
   const searchId = useId();
   return (
-    <div className="border-line bg-surface rounded-lg border p-3">
+    <div
+      role="search"
+      aria-label={label ?? 'Filter'}
+      className="border-line bg-surface rounded-lg border p-3"
+    >
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <div className="col-span-2 lg:col-span-1">
           <label htmlFor={searchId} className="text-muted mb-1 block text-xs font-bold">
@@ -66,6 +76,7 @@ export function FilterBar({
           <SelectField key={s.id} select={s} />
         ))}
       </div>
+      {extra}
       {chips.length > 0 && (
         <div
           className="mt-3 flex flex-wrap items-center gap-2"

@@ -1,11 +1,14 @@
-import { CircleAlert, ExternalLink, LoaderCircle, NotebookPen } from 'lucide-react';
+import { Check, CircleAlert, ExternalLink, LoaderCircle, NotebookPen } from 'lucide-react';
 import { formatShort } from '@/domain/dates';
 import type { ConflictInfo, GroupKey, Todo } from '@/domain/todos';
-import { Badge } from '@/ui/shadcn/badge';
+import { OwnerChip, Pill, type Tone } from '@/ui/blocks';
 import { Button } from '@/ui/shadcn/button';
 import { Checkbox } from '@/ui/shadcn/checkbox';
 import { cn } from '@/ui/lib/utils';
 import { dueLabel, isSafeLink } from './format';
+
+const statusTone = (status: string): Tone =>
+  status === 'erledigt' ? 'ok' : status === 'wartet' ? 'warn' : 'neutral';
 
 function Row({ term, children }: { term: string; children: React.ReactNode }) {
   return (
@@ -21,6 +24,8 @@ export function TodoCard({
   today,
   group,
   pending,
+  highlight = false,
+  isMember,
   conflict,
   onComplete,
   onNote,
@@ -29,6 +34,9 @@ export function TodoCard({
   today: Date;
   group: GroupKey;
   pending: boolean;
+  /** Von `#/todos/<id>` angesprungen. */
+  highlight?: boolean;
+  isMember: (owner: string) => boolean;
   conflict?: ConflictInfo | null;
   onComplete: (t: Todo) => void;
   onNote: (t: Todo) => void;
@@ -38,10 +46,13 @@ export function TodoCard({
   const showBei = t.delegatedTo && t.delegatedTo !== t.waitingFor;
   return (
     <article
+      id={`todo-${t.id}`}
+      tabIndex={-1}
       aria-label={`${t.id} ${t.title}`}
       aria-busy={pending || undefined}
       className={cn(
-        'bg-surface border-line rounded-lg border p-3',
+        'bg-surface border-line scroll-mt-20 rounded-lg border p-3 outline-none',
+        highlight && 'border-accent ring-accent ring-2',
         t.late && 'border-l-crit border-l-4',
         t.isDone && !pending && 'opacity-75',
       )}
@@ -79,39 +90,44 @@ export function TodoCard({
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-1">
         {t.prio && (
-          <Badge variant={t.prio === 'A' ? 'destructive' : t.prio === 'B' ? 'warn' : 'outline'}>
+          <Pill tone={t.prio === 'A' ? 'crit' : t.prio === 'B' ? 'warn' : 'neutral'}>
             Prio {t.prio}
-          </Badge>
+          </Pill>
         )}
-        <Badge
-          variant={t.status === 'erledigt' ? 'ok' : t.status === 'wartet' ? 'warn' : 'outline'}
+        <Pill
+          tone={statusTone(t.status)}
+          icon={t.status === 'erledigt' ? <Check aria-hidden="true" className="size-3.5" /> : null}
         >
           {t.status}
-        </Badge>
-        {group !== 'Ebene' && t.level && <Badge variant="secondary">{t.level}</Badge>}
-        {group !== 'Modus' && t.mode && <Badge variant="outline">{t.mode}</Badge>}
-        {t.area && <Badge variant="outline">{t.area}</Badge>}
+        </Pill>
+        {group !== 'Ebene' && t.level && <Pill>{t.level}</Pill>}
+        {group !== 'Modus' && t.mode && <Pill>{t.mode}</Pill>}
+        {t.area && <Pill>{t.area}</Pill>}
         {conflict && (
-          <Badge variant="destructive" title={conflict.reason}>
-            {conflict.label}
-          </Badge>
+          <span title={conflict.reason}>
+            <Pill tone="crit">{conflict.label}</Pill>
+          </span>
         )}
         {due && (
-          <Badge
-            variant={t.late ? 'destructive' : t.week ? 'warn' : 'outline'}
+          <Pill
+            tone={t.late ? 'crit' : t.week ? 'warn' : 'neutral'}
+            icon={t.late ? <CircleAlert aria-hidden="true" className="size-3" /> : null}
             className="font-mono"
           >
-            {t.late && <CircleAlert className="size-3" aria-hidden="true" />}
             {due}
             {t.late && <span className="sr-only"> (überfällig)</span>}
-          </Badge>
+          </Pill>
         )}
       </div>
 
       {(t.waitingFor || showBei || t.nextStep || t.note) && (
         <dl className="mt-3 space-y-1 pl-1">
           {t.waitingFor && <Row term="Wartet auf">{t.waitingFor}</Row>}
-          {showBei && <Row term="Bei">{t.delegatedTo}</Row>}
+          {showBei && (
+            <Row term="Bei">
+              <OwnerChip name={t.delegatedTo} member={isMember(t.delegatedTo)} />
+            </Row>
+          )}
           {t.nextStep && <Row term="Als Nächstes">{t.nextStep}</Row>}
           {t.note && <Row term="Notiz">{t.note}</Row>}
         </dl>

@@ -33,15 +33,6 @@ export function validateNewTodo(f: Partial<NewTodoFields>): TodoErrors {
   return err;
 }
 
-/**
- * Das Sheet nimmt Eingaben als USER_ENTERED. Text, der mit = + - @ beginnt, würde als Formel gelesen:
- * ein führendes ' macht ihn zu Text (Google speichert das ' nicht mit).
- */
-export function safeText(s: string): string {
-  const t = s.trim();
-  return /^[=+\-@]/.test(t) ? `'${t}` : t;
-}
-
 /** Höchste `T<n>` in der Spalte ID plus 1, zweistellig gepolstert (T07, T118). */
 export function nextTodoId(values: Values): string {
   const idCol = Math.max(0, headerOf(values).indexOf('ID'));
@@ -84,7 +75,7 @@ export function newTodoRow(
       case 'Nächster Schritt':
         return '';
       default:
-        return safeText((fields as Record<string, string | undefined>)[h] ?? '');
+        return ((fields as Record<string, string | undefined>)[h] ?? '').trim();
     }
   });
 }
@@ -99,7 +90,7 @@ export function completePatch(today: Date): Record<string, string> {
 export function appendNote(existing: string, text: string, today: Date): string {
   const line = `${formatShort(today, today)}: ${text.trim()}`;
   const old = existing.trim();
-  return safeText(old ? `${old}\n${line}` : line);
+  return old ? `${old}\n${line}` : line;
 }
 
 /** Zeilenindex (in `values`) der Zeile mit dieser ID in der Spalte ID, -1 wenn nicht da. */

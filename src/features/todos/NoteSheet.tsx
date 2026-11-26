@@ -10,7 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/ui/shadcn/sheet';
-import { TextArea } from './fields';
+import { TextArea } from '@/ui/blocks/fields';
 
 /** Notiz ergänzen. Der Text wird mit Datum unter die bestehende Notiz gehängt. */
 export function NoteSheet({

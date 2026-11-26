@@ -7,7 +7,6 @@ import {
   findTodoRow,
   newTodoRow,
   nextTodoId,
-  safeText,
   validateNewTodo,
   withAppendedRow,
   withCells,
@@ -64,13 +63,13 @@ describe('newTodoRow', () => {
       Ziel: '',
     });
   });
-  it('Status leer wird offen, unbekannte Spalten bleiben leer, Formeln werden zu Text', () => {
+  it('Status leer wird offen, unbekannte Spalten bleiben leer', () => {
     const row = newTodoRow(
       ['ID', 'To-do', 'Status', 'Sonst'],
       { ID: 'T01', 'To-do': '=1+1' },
       TODAY,
     );
-    expect(row).toEqual(['T01', "'=1+1", 'offen', '']);
+    expect(row).toEqual(['T01', '=1+1', 'offen', '']);
   });
 });
 
@@ -106,10 +105,6 @@ describe('Schreib-Helfer', () => {
   it('appendNote hängt „TT.MM.: Text“ an, bestehender Text bleibt', () => {
     expect(appendNote('', ' Neu ', TODAY)).toBe('26.11.: Neu');
     expect(appendNote('Alt', 'Neu', TODAY)).toBe('Alt\n26.11.: Neu');
-  });
-  it('safeText schützt vor Formeln', () => {
-    expect(safeText('@home')).toBe("'@home");
-    expect(safeText('Normal')).toBe('Normal');
   });
   it('withCells ändert nur die Zielzeile, Original bleibt', () => {
     const v = todoValues([{ ID: 'T01' }, { ID: 'T02' }]);

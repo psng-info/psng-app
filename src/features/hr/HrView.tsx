@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Gauge, RefreshCw } from 'lucide-react';
+import { Gauge } from 'lucide-react';
 import { useHrData, useUpdateCandidate } from '@/data/repos/hr';
 import { SheetsError } from '@/data/sheets/SheetsAdapter';
 import {
@@ -16,9 +16,17 @@ import {
   type Person,
 } from '@/domain/hr';
 import { norm } from '@/domain/text';
-import { cn } from '@/ui/lib/utils';
+import {
+  EmptyState,
+  ErrorBanner,
+  FilterBar,
+  PageHeader,
+  Section,
+  Skeleton,
+  Tile,
+  type FilterChip,
+} from '@/ui/blocks';
 import { Button } from '@/ui/shadcn/button';
-import { Input } from '@/ui/shadcn/input';
 import { AbortedList } from './AbortedList';
 import { ActionList } from './ActionList';
 import { PersonCard } from './PersonCard';
@@ -38,10 +46,6 @@ function haystack(p: Person): string {
       ...formAnswers(p).map((a) => a.value),
     ].join(' '),
   );
-}
-
-function selectCls() {
-  return 'border-input bg-card min-h-11 w-full rounded-md border px-3 text-base';
 }
 
 export function HrView() {
@@ -91,32 +95,6 @@ export function HrView() {
   const aborted = shown.filter((p) => p.stage === 'Abbruch');
   const filtered = !!(stage || buddy || needle);
 
-  if (query.isPending) {
-    return (
-      <Section title="Kandidat:innen">
-        <p role="status" className="text-muted">
-          Daten werden geladen.
-        </p>
-      </Section>
-    );
-  }
-  if (query.isError) {
-    const msg =
-      query.error instanceof SheetsError
-        ? query.error.message
-        : 'Daten konnten nicht geladen werden.';
-    return (
-      <Section title="Kandidat:innen">
-        <p role="alert" className="text-crit">
-          {msg}
-        </p>
-        <Button type="button" className="mt-4" onClick={() => void query.refetch()}>
-          Erneut versuchen
-        </Button>
-      </Section>
-    );
-  }
-
   const openTiles = [...STAGES.filter((s) => !CLOSED.has(s)), ONLY_FORM, NO_STATUS].filter(
     (s) => !(s === ONLY_FORM || s === NO_STATUS) || (counts.get(s) ?? 0) > 0,
   );
@@ -138,195 +116,187 @@ export function HrView() {
     />
   );
 
-  const tile = (s: string) => {
-    const n = counts.get(s) ?? 0;
-    const on = stage === s;
-    return (
-      <li key={s}>
-        <button
-          type="button"
-          aria-pressed={on}
-          onClick={() => setStage(on ? null : s)}
-          className={cn(
-            'flex min-h-14 w-full flex-col items-start justify-center rounded-lg border px-3 py-2 text-left',
-            on ? 'border-accent bg-accent-soft' : 'border-line bg-surface',
-            n === 0 && !on && 'text-muted',
-          )}
-        >
-          <span className="font-display text-2xl leading-none font-semibold">{n}</span>
-          <span className="text-xs">{s}</span>
-        </button>
-      </li>
-    );
+  const tile = (s: string) => (
+    <Tile
+      key={s}
+      count={counts.get(s) ?? 0}
+      label={s}
+      pressed={stage === s}
+      onToggle={() => setStage(stage === s ? null : s)}
+    />
+  );
+
+  const chips: FilterChip[] = [];
+  if (q) chips.push({ id: 'q', label: `Suche: „${q}“`, onClear: () => setQ('') });
+  if (stage) chips.push({ id: 'stage', label: `Status: ${stage}`, onClear: () => setStage(null) });
+  if (buddy) chips.push({ id: 'buddy', label: `Buddy: ${buddy}`, onClear: () => setBuddy('') });
+  const clearAll = (): void => {
+    setQ('');
+    setStage(null);
+    setBuddy('');
   };
+
+  const errorMsg =
+    query.error instanceof SheetsError
+      ? query.error.message
+      : 'Daten konnten nicht geladen werden.';
 
   return (
     <section aria-labelledby="hr-title" className="flex flex-col gap-8">
       <div>
-        <div className="flex items-center gap-2">
-          <h2 id="hr-title" className="font-display text-2xl font-semibold">
-            Kandidat:innen
-          </h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="ml-auto"
-            onClick={() => void query.refetch()}
-            disabled={query.isFetching}
-          >
-            <RefreshCw className={cn(query.isFetching && 'animate-spin')} aria-hidden="true" />
-            <span className="sr-only">Neu laden</span>
-          </Button>
-        </div>
-        <details className="mt-1">
-          <summary className="text-muted inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm">
-            <Gauge className="size-4" aria-hidden="true" />
-            Stimmung: {mood.level.label}
-            <span className="font-mono">{mood.score}/100</span>
-          </summary>
-          <ul className="text-muted mt-1 text-sm">
-            {mood.factors.map((f) => (
-              <li key={f.text}>
-                <span className="font-mono">{f.value > 0 ? `+${f.value}` : f.value}</span> {f.text}
-              </li>
-            ))}
-          </ul>
-        </details>
+        <PageHeader
+          id="hr-title"
+          title="Kandidat:innen"
+          updatedAt={query.dataUpdatedAt}
+          fetching={query.isFetching}
+          onReload={() => void query.refetch()}
+        />
+        {query.data && (
+          <details className="mt-1">
+            <summary className="text-muted inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+              <Gauge className="size-4" aria-hidden="true" />
+              Stimmung: {mood.level.label}
+              <span className="font-mono">{mood.score}/100</span>
+            </summary>
+            <ul className="text-muted mt-1 text-sm">
+              {mood.factors.map((f) => (
+                <li key={f.text}>
+                  <span className="font-mono">{f.value > 0 ? `+${f.value}` : f.value}</span>{' '}
+                  {f.text}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </div>
 
-      {update.isError && (
-        <div
-          role="alert"
-          className="border-crit bg-crit-soft text-crit flex items-start gap-2 rounded-lg border p-3 text-sm"
+      {query.isPending && (
+        <div role="status" aria-busy="true" className="flex flex-col gap-3">
+          <span className="sr-only">Daten werden geladen</span>
+          <Skeleton className="h-24" />
+          <Skeleton className="h-40" />
+        </div>
+      )}
+      {query.isError && (
+        <ErrorBanner
+          action={
+            <Button type="button" variant="outline" onClick={() => void query.refetch()}>
+              Erneut versuchen
+            </Button>
+          }
         >
-          <p className="flex-1">
-            Speichern fehlgeschlagen.{' '}
-            {update.error instanceof SheetsError
-              ? update.error.message
-              : 'Bitte nochmal versuchen.'}
-          </p>
-          <Button type="button" variant="ghost" size="sm" onClick={() => update.reset()}>
-            Schließen
-          </Button>
-        </div>
+          {errorMsg}
+        </ErrorBanner>
       )}
 
-      <Section title="Pipeline" level={3}>
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          {[...openTiles, ...extra].map(tile)}
-        </ul>
-        <h4 className="text-muted mt-4 mb-2 text-sm font-medium">Ergebnisse</h4>
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          {closedTiles.map(tile)}
-        </ul>
-      </Section>
+      {update.isError && (
+        <ErrorBanner
+          action={
+            <Button type="button" variant="ghost" size="sm" onClick={() => update.reset()}>
+              Schließen
+            </Button>
+          }
+        >
+          Speichern fehlgeschlagen.{' '}
+          {update.error instanceof SheetsError ? update.error.message : 'Bitte nochmal versuchen.'}
+        </ErrorBanner>
+      )}
 
-      <Section title="Handlungsbedarf" count={groups.length} level={3}>
-        <ActionList groups={groups} />
-      </Section>
+      {query.data && (
+        <>
+          <Section title="Pipeline">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              {[...openTiles, ...extra].map(tile)}
+            </div>
+            <h4 className="text-muted mt-4 mb-2 text-sm font-medium">Ergebnisse</h4>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              {closedTiles.map(tile)}
+            </div>
+          </Section>
 
-      <Section
-        title="Personen"
-        count={filtered ? `${shown.length} von ${people.length}` : shown.length}
-        level={3}
-      >
-        <div className="mb-4 grid gap-2 sm:grid-cols-3">
-          <label htmlFor="hr-q" className="flex flex-col gap-1 text-sm font-medium">
-            Suche
-            <Input
-              id="hr-q"
-              type="search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Name, Stadt, Interesse"
-              autoComplete="off"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Status
-            <select
-              className={selectCls()}
-              value={stage ?? ''}
-              onChange={(e) => setStage(e.target.value || null)}
-            >
-              <option value="">Alle</option>
-              {[...openTiles, ...closedTiles, ...extra]
-                .filter((s) => counts.get(s))
-                .map((s) => (
-                  <option key={s} value={s}>
-                    {s} ({counts.get(s)})
-                  </option>
-                ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Buddy
-            <select
-              className={selectCls()}
-              value={buddy}
-              onChange={(e) => setBuddy(e.target.value)}
-            >
-              <option value="">Alle</option>
-              {buddies.map(([b, n]) => (
-                <option key={b} value={b}>
-                  {b} ({n})
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {filtered && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="mb-3"
-            onClick={() => {
-              setQ('');
-              setStage(null);
-              setBuddy('');
-            }}
+          <Section title="Handlungsbedarf" count={`(${groups.length})`}>
+            <ActionList groups={groups} />
+          </Section>
+
+          <Section
+            title="Personen"
+            count={filtered ? `(${shown.length} von ${people.length})` : `(${shown.length})`}
           >
-            Filter zurücksetzen
-          </Button>
-        )}
+            <div className="flex flex-col gap-4">
+              <FilterBar
+                label="Kandidat:innen filtern"
+                search={{
+                  label: 'Suche',
+                  placeholder: 'Name, Stadt, Interesse',
+                  value: q,
+                  onChange: setQ,
+                }}
+                selects={[
+                  {
+                    id: 'stage',
+                    label: 'Status',
+                    value: stage ?? '',
+                    onChange: (v) => setStage(v || null),
+                    options: [
+                      { value: '', label: 'alle' },
+                      ...[...openTiles, ...closedTiles, ...extra]
+                        .filter((s) => counts.get(s))
+                        .map((s) => ({ value: s, label: s, count: counts.get(s) ?? 0 })),
+                    ],
+                  },
+                  {
+                    id: 'buddy',
+                    label: 'Buddy',
+                    value: buddy,
+                    onChange: setBuddy,
+                    options: [
+                      { value: '', label: 'alle' },
+                      ...buddies.map(([b, n]) => ({ value: b, label: b, count: n })),
+                    ],
+                  },
+                ]}
+                chips={chips}
+                onClearAll={clearAll}
+              />
 
-        {shown.length === 0 && (
-          <p className="text-muted text-sm">
-            {people.length
-              ? 'Keine Treffer für diesen Filter.'
-              : 'Im Tab Kandidaten steht noch niemand.'}
-          </p>
-        )}
+              {shown.length === 0 && (
+                <EmptyState>
+                  {people.length
+                    ? 'Keine Treffer für diesen Filter.'
+                    : 'Im Tab Kandidaten steht noch niemand.'}
+                </EmptyState>
+              )}
 
-        {active.length > 0 && (
-          <ul className="grid gap-3 md:grid-cols-2">
-            {active.map((p) => (
-              <li key={p.key} className="flex">
-                <div className="flex w-full">{card(p)}</div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+              {active.length > 0 && (
+                <ul className="grid gap-3 md:grid-cols-2">
+                  {active.map((p) => (
+                    <li key={p.key} className="flex">
+                      <div className="flex w-full">{card(p)}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Section>
 
-      {results.length > 0 && (
-        <Section title="Ergebnisse" count={results.length} level={3}>
-          <ul className="grid gap-3 md:grid-cols-2">
-            {results.map((p) => (
-              <li key={p.key} className="flex">
-                <div className="flex w-full">{card(p)}</div>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
+          {results.length > 0 && (
+            <Section title="Ergebnisse" count={`(${results.length})`}>
+              <ul className="grid gap-3 md:grid-cols-2">
+                {results.map((p) => (
+                  <li key={p.key} className="flex">
+                    <div className="flex w-full">{card(p)}</div>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
 
-      {aborted.length > 0 && (
-        <Section title="Abgebrochen" count={aborted.length} level={3}>
-          <AbortedList people={aborted} today={today} />
-        </Section>
+          {aborted.length > 0 && (
+            <Section title="Abgebrochen" count={`(${aborted.length})`}>
+              <AbortedList people={aborted} today={today} />
+            </Section>
+          )}
+        </>
       )}
 
       <StatusSheet
@@ -342,31 +312,6 @@ export function HrView() {
           setSheet(null);
         }}
       />
-    </section>
-  );
-}
-
-function Section({
-  title,
-  count,
-  level = 2,
-  children,
-}: {
-  title: string;
-  count?: number | string;
-  level?: 2 | 3;
-  children: React.ReactNode;
-}) {
-  const H = level === 2 ? 'h2' : 'h3';
-  return (
-    <section>
-      <H className="font-display mb-3 text-lg font-semibold">
-        {title}
-        {count !== undefined && (
-          <span className="text-muted ml-2 font-mono text-sm">({count})</span>
-        )}
-      </H>
-      {children}
     </section>
   );
 }

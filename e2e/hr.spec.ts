@@ -10,10 +10,13 @@ test.describe('Kandidat:innen (Demo)', () => {
   test('Pipeline-Kachel filtert die Personenliste', async ({ page }) => {
     const anselm = page.getByRole('article', { name: 'Anselm Rieder' });
     await expect(anselm).toBeVisible();
-    await page.getByRole('button', { name: /Review/, pressed: false }).first().click();
+    await page
+      .getByRole('button', { name: /Review/, pressed: false })
+      .first()
+      .click();
     await expect(page.getByRole('article', { name: 'Konstantin Fehr' })).toBeVisible();
     await expect(anselm).toHaveCount(0);
-    await page.getByRole('button', { name: 'Filter zurücksetzen' }).click();
+    await page.getByRole('button', { name: 'Alle zurücksetzen' }).click();
     await expect(anselm).toBeVisible();
   });
 
@@ -26,7 +29,9 @@ test.describe('Kandidat:innen (Demo)', () => {
     await expect(page.locator('body')).not.toContainText('example.org');
   });
 
-  test('Checklisten-Schritt abhaken schreibt und aktualisiert den Fortschritt', async ({ page }) => {
+  test('Checklisten-Schritt abhaken schreibt und aktualisiert den Fortschritt', async ({
+    page,
+  }) => {
     const card = page.getByRole('article', { name: 'Marlene Oswald' });
     await card.getByText('Checkliste').click();
     const box = card.getByRole('checkbox', { name: /Aufgabe \/ Projekt vereinbart/ });
