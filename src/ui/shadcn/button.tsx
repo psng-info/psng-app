@@ -9,9 +9,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        default: 'bg-primary text-primary-foreground font-bold hover:bg-primary/90',
         destructive: 'bg-destructive text-primary-foreground hover:bg-destructive/90',
         outline: 'border border-border bg-card hover:bg-secondary',
+        /** Zweitaktion in der Markenstimme: 1px Himbeer-Rand, Himbeer-Schrift (wie psng.info). */
+        accent: 'border border-accent/40 bg-card text-accent font-bold hover:bg-accent-soft',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-secondary',
         link: 'text-primary underline-offset-4 hover:underline',

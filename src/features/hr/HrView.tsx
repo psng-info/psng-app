@@ -24,6 +24,7 @@ import {
   Section,
   Skeleton,
   Tile,
+  TileGrid,
   type FilterChip,
 } from '@/ui/blocks';
 import { Button } from '@/ui/shadcn/button';
@@ -174,8 +175,9 @@ export function HrView() {
       {query.isPending && (
         <div role="status" aria-busy="true" className="flex flex-col gap-3">
           <span className="sr-only">Daten werden geladen</span>
-          <Skeleton className="h-24" />
-          <Skeleton className="h-40" />
+          <Skeleton className="h-36 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-64" />
         </div>
       )}
       {query.isError && (
@@ -205,18 +207,18 @@ export function HrView() {
 
       {query.data && (
         <>
-          <Section title="Pipeline">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              {[...openTiles, ...extra].map(tile)}
-            </div>
-            <h4 className="text-muted mt-4 mb-2 text-sm font-medium">Ergebnisse</h4>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              {closedTiles.map(tile)}
-            </div>
-          </Section>
-
           <Section title="Handlungsbedarf" count={`(${groups.length})`}>
             <ActionList groups={groups} />
+          </Section>
+
+          <Section title="Pipeline">
+            <TileGrid className="md:grid-cols-4 lg:grid-cols-7">
+              {[...openTiles, ...extra].map(tile)}
+            </TileGrid>
+            <h4 className="font-display text-muted mt-4 mb-2 text-sm font-semibold">Ergebnisse</h4>
+            <TileGrid className="grid-cols-4 [&>*]:min-h-11 [&>*]:flex-col [&>*]:items-start [&>*]:gap-0.5 [&>*]:py-2 md:[&>*]:min-h-14">
+              {closedTiles.map(tile)}
+            </TileGrid>
           </Section>
 
           <Section

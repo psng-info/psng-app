@@ -44,6 +44,30 @@ export function LevelIcon({ level, className }: { level: 'crit' | 'warn'; classN
   return <Icon aria-hidden="true" className={cn('size-3.5 shrink-0', className)} />;
 }
 
+/** Stufe als Text mit Symbol, ohne Fläche. Für Listen, in denen viele Hinweise untereinander stehen. */
+export function LevelTag({
+  level,
+  className,
+  children,
+}: {
+  level: 'crit' | 'warn';
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 text-xs leading-tight font-bold',
+        level === 'crit' ? 'text-crit' : 'text-warn',
+        className,
+      )}
+    >
+      <LevelIcon level={level} />
+      {children}
+    </span>
+  );
+}
+
 export function LevelPill({ level, children }: { level: 'crit' | 'warn'; children: ReactNode }) {
   return (
     <Pill tone={level} icon={<LevelIcon level={level} />}>
@@ -52,22 +76,13 @@ export function LevelPill({ level, children }: { level: 'crit' | 'warn'; childre
   );
 }
 
-/** Talk-Status aus der Spalte Status in Lectures. */
+/** Talk-Status aus der Spalte Status in Lectures. Ruhig: neutral, das Symbol trägt die Bedeutung. */
 export function StatusBadge({ status }: { status: string }) {
   const s = status.toLowerCase();
   if (s === 'veröffentlicht')
-    return (
-      <Pill tone="ok" icon={<Check aria-hidden="true" className="size-3.5" />}>
-        {status}
-      </Pill>
-    );
-  if (s === 'fix') return <Pill tone="accent">{status}</Pill>;
+    return <Pill icon={<Check aria-hidden="true" className="text-ok size-3.5" />}>{status}</Pill>;
   if (/abgesagt|pausiert/.test(s))
-    return (
-      <Pill tone="neutral" icon={<Ban aria-hidden="true" className="size-3.5" />}>
-        {status}
-      </Pill>
-    );
-  if (s === 'durchgeführt') return <Pill tone="neutral">{status}</Pill>;
+    return <Pill icon={<Ban aria-hidden="true" className="size-3.5" />}>{status}</Pill>;
+  if (s === 'fix' || s === 'durchgeführt') return <Pill>{status}</Pill>;
   return <Pill className="border-dashed">{status || 'ohne Status'}</Pill>;
 }

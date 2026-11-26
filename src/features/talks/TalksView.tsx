@@ -12,14 +12,7 @@ import { useOnline } from '@/data/online';
 import { SheetsError } from '@/data/sheets/SheetsAdapter';
 import { navigate } from '@/app/router';
 import { parseDate, startOfDay } from '@/domain/dates';
-import {
-  TALK_TILES,
-  actionItems,
-  buildTalksModel,
-  speakerPool,
-  stats,
-  talkKey,
-} from '@/domain/talks/model';
+import { actionItems, buildTalksModel, speakerPool, stats, talkKey } from '@/domain/talks/model';
 import { cell } from '@/domain/talks/steps';
 import type { Flag, StepState, Talk } from '@/domain/talks/types';
 import { EmptyState, ErrorBanner, PageHeader, Section, Skeleton } from '@/ui/blocks';
@@ -28,8 +21,8 @@ import { TalkActionsContext, type TalkActions } from './actions';
 import { ActionList } from './ActionList';
 import { FactsSheet } from './FactsSheet';
 import { StepSheet, type StepEdit } from './StepSheet';
-import { NO_FILTERS, hasActiveFilter, type TalkFilters } from './filters';
-import { NextTalkHero, NumberTiles, TileGrid } from './Lage';
+import { NO_FILTERS, type TalkFilters } from './filters';
+import { NextTalkHero } from './Lage';
 import { Numbers } from './Numbers';
 import { SpeakerPool } from './SpeakerPool';
 import { cardId } from './links';
@@ -39,18 +32,14 @@ function Loading() {
   return (
     <div role="status" aria-busy="true" className="flex flex-col gap-8">
       <span className="sr-only">Talks werden geladen</span>
-      <div className="grid gap-3 lg:grid-cols-3">
-        <Skeleton className="h-52 lg:col-span-2" />
-        <div className="grid gap-3">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        <Skeleton className="h-56 rounded-2xl" />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-48 rounded-2xl" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-20" />
-        ))}
-      </div>
+      <Skeleton className="h-28 rounded-2xl" />
       <div className="flex flex-col gap-3">
         {Array.from({ length: 3 }, (_, i) => (
           <Skeleton key={i} className="h-28" />
@@ -213,14 +202,10 @@ export function TalksView({
     });
   }, [scrollReq, model]);
 
-  const toggleTile = (k: string): void =>
-    setFilters((f) => ({ ...f, tile: f.tile === k ? '' : k }));
-
   const errorText =
     query.error instanceof SheetsError
       ? query.error.message
       : 'Die Talks konnten nicht geladen werden.';
-  const activeTile = TALK_TILES.find((t) => t.k === filters.tile);
 
   return (
     <TalkActionsContext.Provider value={talkActions}>
@@ -274,43 +259,17 @@ export function TalksView({
 
         {model && numbers && pool && (
           <>
-            <Section title="Lage">
-              <div className="grid gap-3 lg:grid-cols-3">
-                <div className="lg:col-span-2">
-                  <NextTalkHero talk={model.next} today={today} onOpen={openFromUi} />
-                </div>
-                <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
-                  <NumberTiles stats={numbers} />
-                </div>
-              </div>
-              <div className="mt-3">
-                <TileGrid talks={model.talks} active={filters.tile} onToggle={toggleTile} />
-              </div>
-              {activeTile && (
-                <p className="text-muted mt-2 text-sm" aria-live="polite">
-                  Filter aktiv: {activeTile.label}.{' '}
-                  <button
-                    type="button"
-                    className="text-accent min-h-11 underline underline-offset-2"
-                    onClick={() =>
-                      document.getElementById('talks-liste')?.scrollIntoView({
-                        behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-                        block: 'start',
-                      })
-                    }
-                  >
-                    Zur Liste
-                  </button>
-                </p>
-              )}
-            </Section>
-
-            <Section
-              title="Handlungsbedarf"
-              count={actions.length ? `(${actions.length})` : undefined}
-            >
-              <ActionList items={actions} onOpen={openFromUi} />
-            </Section>
+            <div className="grid items-start gap-x-6 gap-y-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+              <Section title="Nächster Talk" className="lg:sticky lg:top-20">
+                <NextTalkHero talk={model.next} today={today} onOpen={openFromUi} />
+              </Section>
+              <Section
+                title="Handlungsbedarf"
+                count={actions.length ? `(${actions.length})` : undefined}
+              >
+                <ActionList items={actions} onOpen={openFromUi} />
+              </Section>
+            </div>
 
             {model.talks.length === 0 ? (
               <Section title="Talks">
@@ -327,7 +286,7 @@ export function TalksView({
               />
             )}
 
-            <Section title="Zahlen" hint={hasActiveFilter(filters) ? undefined : 'Gehaltene Talks'}>
+            <Section title="Zahlen" hint="Gehaltene Talks">
               <Numbers stats={numbers} today={today} onOpen={openFromUi} />
             </Section>
 

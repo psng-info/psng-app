@@ -24,7 +24,7 @@ export function NoteSheet({
 }) {
   return (
     <Sheet open={todo !== null} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="bottom" className="glass mx-auto w-full max-w-xl">
+      <SheetContent side="bottom">
         {todo && <NoteForm key={todo.id} todo={todo} onSave={onSave} />}
       </SheetContent>
     </Sheet>

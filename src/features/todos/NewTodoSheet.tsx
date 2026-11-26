@@ -54,7 +54,7 @@ export function NewTodoSheet({
 }) {
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="bottom" className="glass mx-auto w-full max-w-xl">
+      <SheetContent side="bottom">
         {open && <NewForm onCreate={onCreate} goals={goals} areas={areas} people={people} />}
       </SheetContent>
     </Sheet>
